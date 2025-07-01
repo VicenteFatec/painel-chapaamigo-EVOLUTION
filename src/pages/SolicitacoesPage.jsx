@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import './SolicitacoesPage.css';
 import Modal from '../components/Modal';
 import CartaoOS from '../components/CartaoOS'; 
-import { Clock, CheckCircle, XCircle, FileText, User, Eye, Ticket, Search, X } from 'lucide-react';
-import { db } from '../firebaseConfig';
+import { Clock, CheckCircle, XCircle, FileText, User, Eye, Ticket, Search, X, Loader2 } from 'lucide-react';
+
+// Firebase
+import { db, functions } from '../firebaseConfig'; 
 import { collection, getDocs, query, where, orderBy, doc, writeBatch, Timestamp, getDoc } from 'firebase/firestore';
+import { httpsCallable } from "firebase/functions"; 
 
 const getStatusInfo = (status) => {
     switch (status) {
@@ -16,7 +19,6 @@ const getStatusInfo = (status) => {
     }
 };
 
-// O nosso "Tradutor" inteligente de regiões
 const regioesSinonimos = {
     'São Paulo (Capital)': ['SP (Capital)'],
     'SP (Capital)': ['São Paulo (Capital)'],
@@ -32,6 +34,9 @@ function SolicitacoesPage() {
     const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
     const [trabalhadorSelecionado, setTrabalhadorSelecionado] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isAlocando, setIsAlocando] = useState(false);
+
+    const enviarConvite = httpsCallable(functions, 'enviarConviteOS');
 
     const fetchSolicitacoes = async () => {
         setIsLoading(true);
@@ -122,8 +127,13 @@ function SolicitacoesPage() {
         setTrabalhadorSelecionado(null);
     };
 
+    // ... (todo o início do arquivo é o mesmo)
+
     const handleAlocarChapa = async (chapa) => {
         if (!solicitacaoSelecionada || !chapa) { return; }
+        
+        setIsAlocando(true);
+
         try {
             const batch = writeBatch(db);
             const solicitacaoRef = doc(db, "solicitacoes", solicitacaoSelecionada.id);
@@ -136,10 +146,33 @@ function SolicitacoesPage() {
             const chapaRef = doc(db, "chapas_b2b", chapa.id);
             batch.update(chapaRef, { status: 'Em Serviço' });
             await batch.commit();
+
+            // VOLTANDO A USAR OS DADOS DINÂMICOS DA SOLICITAÇÃO
+            const dadosParaEnvio = {
+                telefoneChapa: chapa.telefone,
+                nomeChapa: chapa.nomeCompleto,
+                nomeEmpresa: solicitacaoSelecionada.cliente,
+                localServico: solicitacaoSelecionada.local // <-- Usando o dado real
+            };
+
+            const resultado = await enviarConvite(dadosParaEnvio);
+            console.log("Resultado da função:", resultado.data);
+            alert(`Trabalhador alocado e notificação enviada com sucesso! (SID: ${resultado.data.messageSid})`);
+
             fecharDetalhesModal();
             fetchSolicitacoes();
-        } catch (error) { console.error("Erro ao alocar trabalhador: ", error); }
+
+        } catch (error) { 
+            console.error("Erro no processo de alocação: ", error); 
+            alert(`Ocorreu um erro. O trabalhador pode ter sido alocado, mas a notificação falhou. Verifique o console.`);
+        } finally {
+            setIsAlocando(false);
+        }
     };
+
+
+
+// ... (o resto do arquivo, JSX, etc. permanece exatamente o mesmo) ...
 
     const handleFinalizarServico = async (solicitacao) => {
         if (!solicitacao.chapaAlocadoId) { return; }
@@ -157,42 +190,7 @@ function SolicitacoesPage() {
             fetchSolicitacoes();
         } catch (error) { console.error("Erro ao finalizar serviço: ", error); }
     };
-
-    let tableContent;
-    if (isLoading) {
-        tableContent = ( <tr> <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>Carregando solicitações...</td> </tr> );
-    } else if (solicitacoes.length > 0) {
-        tableContent = solicitacoes.map((solicitacao) => {
-            const statusInfo = getStatusInfo(solicitacao.status);
-            return (
-                <tr key={solicitacao.id}>
-                    <td>
-                        <div style={{fontWeight: 600}}>{solicitacao.cliente}</div>
-                        {solicitacao.chapaAlocadoNome && ( <div style={{fontSize: '0.8rem', color: '#6b7280', marginTop: '4px'}}> <span style={{fontWeight: 500}}>Alocado:</span> {solicitacao.chapaAlocadoNome} </div> )}
-                    </td>
-                    <td>
-                        <div className="datas-cell">
-                            <span><strong>Solicitado:</strong> {solicitacao.dataSolicitacao.toDate().toLocaleDateString('pt-BR')}</span>
-                            {solicitacao.timestampFim && ( <span><strong>Finalizado:</strong> {solicitacao.timestampFim.toDate().toLocaleDateString('pt-BR')}</span> )}
-                        </div>
-                    </td>
-                    <td>
-                        <div className={`status-cell ${statusInfo.color}`}> {statusInfo.icon} <span>{statusInfo.text}</span> </div>
-                    </td>
-                    <td>
-                        <div className="acoes-cell">
-                            {solicitacao.status === 'pendente' && ( <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Encontrar Chapa </button> )}
-                            {solicitacao.status === 'confirmado' && ( <> <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Ver Detalhes </button> <button className="ticket-button" onClick={() => handleVerTicket(solicitacao)} title="Ver Ticket de Serviço"> <Ticket size={16}/> Ver Ticket </button> <button className="finish-button" onClick={() => handleFinalizarServico(solicitacao)}> Finalizar Serviço </button> </> )}
-                            {solicitacao.status === 'finalizado' && ( <> <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Ver Detalhes </button> <button className="ticket-button" onClick={() => handleVerTicket(solicitacao)} title="Ver Ticket de Serviço"> <Ticket size={16}/> Ver Ticket </button> </> )}
-                            {solicitacao.status === 'cancelado' && ( <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Ver Detalhes </button> )}
-                        </div>
-                    </td>
-                </tr>
-            );
-        });
-    } else {
-        tableContent = ( <tr> <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>Nenhuma solicitação encontrada.</td> </tr> );
-    }
+    
     return (
         <div>
             <div className="solicitacoes-header">
@@ -209,7 +207,38 @@ function SolicitacoesPage() {
                             <th>Ações</th>
                         </tr>
                     </thead>
-                    <tbody>{tableContent}</tbody>
+                    <tbody>
+                    {isLoading ? ( <tr> <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>Carregando solicitações...</td> </tr> ) : solicitacoes.length > 0 ? (
+                        solicitacoes.map((solicitacao) => {
+                            const statusInfo = getStatusInfo(solicitacao.status);
+                            return (
+                                <tr key={solicitacao.id}>
+                                    <td>
+                                        <div style={{fontWeight: 600}}>{solicitacao.cliente}</div>
+                                        {solicitacao.chapaAlocadoNome && ( <div style={{fontSize: '0.8rem', color: '#6b7280', marginTop: '4px'}}> <span style={{fontWeight: 500}}>Alocado:</span> {solicitacao.chapaAlocadoNome} </div> )}
+                                    </td>
+                                    <td>
+                                        <div className="datas-cell">
+                                            <span><strong>Solicitado:</strong> {solicitacao.dataSolicitacao.toDate().toLocaleDateString('pt-BR')}</span>
+                                            {solicitacao.timestampFim && ( <span><strong>Finalizado:</strong> {solicitacao.timestampFim.toDate().toLocaleDateString('pt-BR')}</span> )}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div className={`status-cell ${statusInfo.color}`}> {statusInfo.icon} <span>{statusInfo.text}</span> </div>
+                                    </td>
+                                    <td>
+                                        <div className="acoes-cell">
+                                            {solicitacao.status === 'pendente' && ( <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Encontrar Chapa </button> )}
+                                            {solicitacao.status === 'confirmado' && ( <> <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Ver Detalhes </button> <button className="ticket-button" onClick={() => handleVerTicket(solicitacao)} title="Ver Ticket de Serviço"> <Ticket size={16}/> Ver Ticket </button> <button className="finish-button" onClick={() => handleFinalizarServico(solicitacao)}> Finalizar Serviço </button> </> )}
+                                            {solicitacao.status === 'finalizado' && ( <> <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Ver Detalhes </button> <button className="ticket-button" onClick={() => handleVerTicket(solicitacao)} title="Ver Ticket de Serviço"> <Ticket size={16}/> Ver Ticket </button> </> )}
+                                            {solicitacao.status === 'cancelado' && ( <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Ver Detalhes </button> )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })
+                    ) : ( <tr> <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>Nenhuma solicitação encontrada.</td> </tr> )}
+                    </tbody>
                 </table>
             </div>
 
@@ -293,7 +322,13 @@ function SolicitacoesPage() {
                                                         <span className="sugerido-regiao">{chapa.regiao}</span>
                                                     </div>
                                                 </div>
-                                                <button className="alocar-btn" onClick={() => handleAlocarChapa(chapa)}>Alocar</button>
+                                                <button 
+                                                    className="alocar-btn" 
+                                                    onClick={() => handleAlocarChapa(chapa)}
+                                                    disabled={isAlocando}
+                                                >
+                                                    {isAlocando ? <Loader2 size={16} className="animate-spin" /> : 'Alocar'}
+                                                </button>
                                             </div>
                                         ))
                                     ) : ( <p style={{textAlign: 'center', padding: '1rem'}}>Nenhum trabalhador encontrado.</p> )}
