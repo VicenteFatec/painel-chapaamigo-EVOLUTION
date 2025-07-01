@@ -10,9 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "browser-image-compression": "^2.0.2",
     "firebase": "^11.9.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.523.0",
+    "papaparse": "^5.5.3",
+    "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-imask": "^7.6.1",

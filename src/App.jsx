@@ -25,7 +25,9 @@ function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="frota" element={<MinhaFrotaPage />} />
           <Route path="operacoes" element={<SolicitacoesPage />} />
-          <Route path="talentos" element={<GestaoDeTalentosPage />} /> {/* <-- E VERIFIQUE SE ESTA LINHA EXISTE */}
+          <Route path="talentos" element={<GestaodeTalentosPage />} />
+          
+          
         </Route>
       </Routes>
     </Router>

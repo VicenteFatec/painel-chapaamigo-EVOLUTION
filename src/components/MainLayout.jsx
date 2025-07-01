@@ -10,7 +10,7 @@ import { IMaskInput } from 'react-imask';
 const getPageTitle = (pathname) => {
     switch (pathname) {
         case '/dashboard': return 'Dashboard';
-        case '/solicitacoes': return 'Mesa de Operações';
+        case '/operacoes': return 'Mesa de Operações';
         case '/talentos': return 'Gestão de Trabalhadores';
         case '/frota': return 'Minha Frota';
         default: return 'Painel';
