@@ -1,0 +1,334 @@
+:root {
+  --sidebar-bg-color: #1a202c;
+  --sidebar-text-color: #a0aec0;
+  --sidebar-hover-bg: #2d3748;
+  --sidebar-active-bg: #3b82f6;
+  --content-bg-color: #f7fafc;
+  --primary-action-color: #4f46e5;
+  --primary-action-hover: #4338ca;
+}
+
+.main-layout {
+  display: flex;
+  height: 100vh;
+  background-color: var(--content-bg-color);
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 260px;
+  background-color: var(--sidebar-bg-color);
+  color: var(--sidebar-text-color);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  transition: width 0.3s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 1rem 0.5rem;
+  border-bottom: 1px solid #2d3748;
+  margin-bottom: 1.5rem;
+}
+
+.sidebar-header .logo {
+  height: 40px;
+  width: auto;
+}
+
+.sidebar-header h1 {
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.sidebar-nav {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--sidebar-text-color);
+  font-weight: 500;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-link:hover {
+  background-color: var(--sidebar-hover-bg);
+  color: white;
+}
+
+.nav-link.active {
+  background-color: var(--sidebar-active-bg);
+  color: white;
+  box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.3);
+}
+
+.nav-link span {
+  margin-left: 0.75rem;
+}
+
+.sidebar-footer {
+  border-top: 1px solid #2d3748;
+  padding-top: 1.5rem;
+  margin-top: 1rem;
+}
+
+.user-info {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.user-email {
+  font-size: 0.875rem;
+  display: block;
+  word-break: break-all;
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  background: none;
+  border: 1px solid #4a5568;
+  color: var(--sidebar-text-color);
+  padding: 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.logout-button:hover {
+  background-color: #4a5568;
+  color: white;
+}
+
+.logout-button span {
+  margin-left: 0.5rem;
+}
+
+.content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background-color: white;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.new-os-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--primary-action-color);
+  color: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.new-os-button:hover {
+  background-color: var(--primary-action-hover);
+}
+
+.new-os-button:active {
+  transform: scale(0.98);
+}
+
+.page-content {
+  flex-grow: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+/* ===== NOVOS ESTILOS PARA O FORMULÁRIO NO MODAL ===== */
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem; 
+}
+
+.form-section {
+    background-color: #f9fafb;
+    border: 1px solid #f3f4f6;
+    border-radius: 8px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    margin: -1.5rem -1.5rem 0 -1.5rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.input-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.input-group label {
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.input-group input,
+.input-group select,
+.input-group textarea {
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    background-color: white;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-group input:focus,
+.input-group select:focus,
+.input-group textarea:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+.input-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.cep-group {
+    position: relative;
+}
+
+.cep-group .spinner {
+    position: absolute;
+    right: 10px;
+    top: 38px;
+    color: #6b7280;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: #fffbeb;
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid #fef3c7;
+}
+
+.checkbox-group label {
+    font-weight: 500;
+    color: #92400e;
+    cursor: pointer;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 1.15rem;
+    height: 1.15rem;
+    cursor: pointer;
+    accent-color: var(--primary-action-color);
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.cancel-button, .add-button {
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cancel-button {
+    background-color: white;
+    border: 1px solid #d1d5db;
+    color: #374151;
+}
+
+.cancel-button:hover { background-color: #f9fafb; }
+
+.add-button {
+    background-color: #10b981;
+    border: 1px solid #059669;
+    color: white;
+}
+
+.add-button:hover { background-color: #059669; }
+
+.add-button:disabled {
+    background-color: #9ca3af;
+    border-color: #9ca3af;
+    cursor: not-allowed;
+}

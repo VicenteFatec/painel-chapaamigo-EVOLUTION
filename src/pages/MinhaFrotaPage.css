@@ -1,0 +1,72 @@
+.frota-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.frota-title {
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.add-button {
+  background-color: #0056b3;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s;
+}
+
+.add-button:hover {
+  background-color: #004494;
+}
+
+.table-container {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  overflow: hidden; /* Garante que as bordas arredondadas funcionem na tabela */
+}
+
+.frota-table {
+  width: 100%;
+  border-collapse: collapse; /* Remove o espaçamento entre as células */
+}
+
+.frota-table th, .frota-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb; /* Linha cinza entre as linhas */
+}
+
+.frota-table th {
+  background-color: #f9fafb;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: #6c757d;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.action-buttons button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+/* Estilos para o formulário dentro do modal */
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* Espaço entre os campos */
+}

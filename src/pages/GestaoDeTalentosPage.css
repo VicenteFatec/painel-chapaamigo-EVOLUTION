@@ -1,0 +1,278 @@
+.gestao-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    flex-wrap: wrap; 
+    gap: 1rem;
+}
+
+.title-with-counter {
+    display: flex;
+    align-items: center;
+    gap: 1rem; 
+    flex-wrap: wrap;
+}
+
+.gestao-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0; 
+}
+
+.total-counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: #eef2ff;
+    color: #4338ca;
+    font-size: 0.875rem; 
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    border: 1px solid #c7d2fe;
+}
+
+.gestao-subtitle {
+    font-size: 1rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+.action-buttons-group {
+    display: flex;
+    gap: 1rem;
+}
+
+.import-button, .import-button-csv {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: white;
+    border: 1px solid transparent;
+}
+
+.import-button-csv { background-color: #059669; }
+.import-button-csv:hover { background-color: #047857; }
+.import-button { background-color: #3b82f6; }
+.import-button:hover { background-color: #2563eb; }
+
+.import-button:active, .import-button-csv:active {
+    transform: scale(0.98);
+}
+
+.import-status-feedback {
+    background-color: #eef2ff;
+    color: #4338ca;
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 2rem;
+    font-weight: 500;
+}
+
+.filtro-container {
+    margin-bottom: 1.5rem;
+}
+
+.filtro-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid #dfe1e6;
+    box-sizing: border-box; 
+    transition: all 0.2s ease-in-out;
+}
+
+.filtro-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.table-container {
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background-color: white;
+}
+
+.talentos-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.talentos-table th, .talentos-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+}
+
+.talentos-table th {
+    background-color: #f9fafb;
+    color: #6b7280;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.talentos-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.user-cell { display: flex; align-items: center; gap: 1rem; }
+.user-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background-color: #e5e7eb; display: flex;
+    align-items: center; justify-content: center;
+    color: #6b7280; overflow: hidden; flex-shrink: 0;
+}
+.avatar-image { width: 100%; height: 100%; object-fit: cover; }
+.user-name { font-weight: 600; color: #111827; display: block; }
+.user-cpf { font-size: 0.9rem; color: #6b7280; }
+
+.status-badge {
+    padding: 0.25rem 0.75rem; border-radius: 9999px;
+    font-weight: 500; font-size: 0.8rem; text-transform: capitalize;
+}
+.status-disponível { background-color: #dcfce7; color: #166534; }
+.status-em-serviço { background-color: #ffedd5; color: #9a3412; }
+.status-de-férias { background-color: #e0e7ff; color: #3730a3; }
+.status-bloqueado { background-color: #fee2e2; color: #991b1b; }
+
+.contact-cell { display: flex; flex-direction: column; gap: 0.25rem; }
+.region-tag {
+    font-size: 0.75rem; background-color: #e9ecef;
+    color: #495057; padding: 2px 6px; border-radius: 4px;
+    margin-top: 4px; align-self: flex-start;
+}
+
+.acoes-cell { display: flex; gap: 0.5rem; }
+.action-button-details, .action-button-edit, .action-button-delete {
+    padding: 0.5rem; border-radius: 50%; border: none;
+    background-color: transparent; cursor: pointer;
+    transition: background-color 0.2s; color: #6b7280;
+}
+.action-button-edit:hover, .action-button-details:hover:not(:disabled) { background-color: #f3f4f6; color: #111827; }
+.action-button-delete:hover { background-color: #fee2e2; color: #b91c1c; }
+.action-button-details:disabled { color: #d1d5db; cursor: not-allowed; }
+
+/* === ESTILOS PARA O FORMULÁRIO NO MODAL === */
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem; 
+}
+
+.form-section {
+    background-color: #f9fafb;
+    border: 1px solid #f3f4f6;
+    border-radius: 8px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    margin: -1.5rem -1.5rem 0 -1.5rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.input-group label {
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.input-group input,
+.input-group select {
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    background-color: white;
+}
+
+.input-group input:disabled {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+    color: #6b7280;
+}
+
+.upload-section {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+.upload-item { flex: 1; }
+.upload-button {
+    display: flex; justify-content: center; align-items: center;
+    gap: 0.5rem; width: 100%; padding: 0.75rem;
+    border: 1px dashed #d1d5db; border-radius: 6px;
+    cursor: pointer; transition: all 0.2s;
+}
+.upload-button:hover { border-color: #4f46e5; color: #4f46e5; }
+.file-feedback { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+.upload-preview { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
+.remove-file-btn { background: none; border: none; cursor: pointer; color: #ef4444; }
+.upload-progress-feedback { text-align: center; color: #4f46e5; font-weight: 500; }
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.cancel-button, .add-button {
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.cancel-button {
+    background-color: white;
+    border: 1px solid #d1d5db;
+    color: #374151;
+}
+.cancel-button:hover { background-color: #f9fafb; }
+.add-button {
+    background-color: #4f46e5;
+    border: 1px solid #4f46e5;
+    color: white;
+}
+.add-button:hover { background-color: #4338ca; }

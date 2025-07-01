@@ -1,0 +1,325 @@
+/* =================================== */
+/* ESTILOS GERAIS DA PÁGINA            */
+/* =================================== */
+
+.solicitacoes-header {
+    margin-bottom: 2rem;
+}
+
+.solicitacoes-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.solicitacoes-subtitle {
+    font-size: 1rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+/* =================================== */
+/* ESTILOS DA TABELA PRINCIPAL         */
+/* =================================== */
+
+.solicitacoes-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.solicitacoes-table th, .solicitacoes-table td {
+    padding: 1rem 1.5rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.solicitacoes-table thead {
+    background-color: #f9fafb;
+}
+
+.solicitacoes-table th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.solicitacoes-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.solicitacoes-table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.status-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+}
+
+.text-yellow-500 { color: #f59e0b; }
+.text-green-500 { color: #10b981; }
+.text-blue-500 { color: #3b82f6; }
+.text-red-500 { color: #ef4444; }
+.text-gray-500 { color: #6b7280; }
+
+.datas-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+}
+
+.datas-cell strong {
+    color: #4b5563;
+}
+
+/* =================================== */
+/* ESTILOS DOS BOTÕES DE AÇÃO           */
+/* =================================== */
+
+.acoes-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.acoes-cell button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    white-space: nowrap;
+}
+
+.ticket-button { background-color: #f59e0b; color: white; }
+.ticket-button:hover { background-color: #d97706; }
+.finish-button { background-color: #3b82f6; color: white; }
+.finish-button:hover { background-color: #2563eb; }
+.view-details-button { background-color: #6b7280; color: white; }
+.view-details-button:hover { background-color: #4b5563; }
+
+
+/* ================================================== */
+/* ESTILOS REFORÇADOS PARA O MODAL DE CURADORIA       */
+/* ================================================== */
+
+.modal-body .curadoria-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .modal-body .curadoria-container {
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+}
+
+.curadoria-coluna {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.curadoria-coluna h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 0.75rem;
+}
+
+.detalhes-solicitacao {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.detalhes-solicitacao .detalhe-item {
+    line-height: 1.4;
+}
+
+.detalhes-solicitacao .detalhe-item strong {
+    display: block;
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.detalhes-solicitacao .detalhe-item p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #1f2937;
+}
+
+.detalhes-solicitacao .detalhe-item-valor p {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #15803d;
+}
+
+.detalhes-divisor {
+    border: none;
+    border-top: 1px dashed #e5e7eb;
+    margin: 0;
+}
+
+/* =================================== */
+/* ESTILOS DA BUSCA NO MODAL           */
+/* =================================== */
+
+.search-container {
+    margin-bottom: 1rem;
+}
+
+.search-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.search-input-wrapper {
+    position: relative;
+    flex-grow: 1;
+}
+
+.search-input-wrapper .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+}
+
+.search-input-wrapper input {
+    width: 100%;
+    padding: 10px 12px 10px 36px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box; 
+}
+
+.search-input-wrapper input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.search-form button {
+    padding: 10px 16px;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.search-form button:hover {
+    background-color: #2563eb;
+}
+
+.clear-search-button {
+    width: 100%;
+    padding: 6px;
+    font-size: 0.8rem;
+    color: #4b5563;
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.clear-search-button:hover {
+    background-color: #e5e7eb;
+}
+
+.lista-sugeridos {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    flex-grow: 1;
+}
+
+.sugerido-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    gap: 1rem;
+}
+
+.sugerido-item:last-child {
+    border-bottom: none;
+}
+
+.sugerido-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.sugerido-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.sugerido-nome {
+    font-weight: 600;
+}
+
+.sugerido-regiao {
+    font-size: 0.75rem;
+    color: #6b7280;
+    display: block;
+}
+
+.alocar-btn {
+    background-color: #10b981;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+}
+
+.alocar-btn:hover {
+    background-color: #059669;
+}

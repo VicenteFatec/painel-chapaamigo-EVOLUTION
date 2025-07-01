@@ -1,0 +1,85 @@
+/* CÓDIGO COMPLETO E FINAL PARA: src/components/Modal.css */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 90%;
+  max-width: 800px; 
+  display: flex;
+  flex-direction: column;
+  /* Garante que o modal não saia da tela em altura */
+  max-height: 90vh; 
+}
+
+.modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0; /* Impede que o cabeçalho encolha */
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.modal-close-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.modal-close-button:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+/* AQUI ESTÁ A CORREÇÃO PRINCIPAL */
+.modal-body {
+  padding: 0; /* O padding é controlado pelas seções do formulário */
+  overflow-y: auto;  /* CRIA A BARRA DE ROLAGEM QUANDO NECESSÁRIO */
+  flex-grow: 1; /* Permite que o corpo do modal cresça e ocupe o espaço */
+}
+
+/* Estilos para a barra de rolagem mais visível */
+.modal-body::-webkit-scrollbar {
+  width: 12px; /* Um pouco mais larga */
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: #b3b3b3; /* Cor mais escura para o polegar da barra */
+  border-radius: 10px;
+  border: 3px solid #f1f1f1; /* Adiciona uma borda para melhor contraste */
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: #999999; /* Cor ao passar o mouse */
+}
