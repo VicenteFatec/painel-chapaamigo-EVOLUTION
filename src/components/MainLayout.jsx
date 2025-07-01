@@ -129,7 +129,7 @@ function MainLayout() {
                 </div>
                 <nav className="sidebar-nav">
                     <NavLink to="/dashboard" className="nav-link"><LayoutDashboard size={20} /><span>Dashboard</span></NavLink>
-                    <NavLink to="/solicitacoes" className="nav-link"><ClipboardList size={20} /><span>Mesa de Operações</span></NavLink>
+                    <NavLink to="/operacoes" className="nav-link"><ClipboardList size={20} /><span>Mesa de Operações</span></NavLink>
                     <NavLink to="/talentos" className="nav-link"><Award size={20} /><span>Gestão de Trabalhadores</span></NavLink>
                     <NavLink to="/frota" className="nav-link"><Users size={20} /><span>Minha Frota</span></NavLink>
                 </nav>

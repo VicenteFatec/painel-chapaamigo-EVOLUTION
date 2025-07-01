@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import MinhaFrotaPage from './pages/MinhaFrotaPage';
 import SolicitacoesPage from './pages/SolicitacoesPage';
+import GestaoDeTalentosPage from './pages/GestaoDeTalentosPage'; // <-- VERIFIQUE SE ESTA LINHA EXISTE
 
 const isAuthenticated = true; 
 
@@ -23,8 +24,8 @@ function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="frota" element={<MinhaFrotaPage />} />
-          {/* AQUI ESTÁ A MUDANÇA: RENOMEAMOS A ROTA */}
           <Route path="operacoes" element={<SolicitacoesPage />} />
+          <Route path="talentos" element={<GestaoDeTalentosPage />} /> {/* <-- E VERIFIQUE SE ESTA LINHA EXISTE */}
         </Route>
       </Routes>
     </Router>
