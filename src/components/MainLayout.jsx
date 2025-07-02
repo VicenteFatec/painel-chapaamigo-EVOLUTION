@@ -85,37 +85,41 @@ function MainLayout() {
     }, [newOrderData.cep]);
 
     const handleNewOrderSubmit = async (e) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        try {
-            const dataToSave = {
-                descricaoServico: newOrderData.descricaoServico,
-                endereco: {
-                    cep: newOrderData.cep, logradouro: newOrderData.logradouro,
-                    numero: newOrderData.numero, complemento: newOrderData.complemento,
-                    bairro: newOrderData.bairro, cidade: newOrderData.cidade, estado: newOrderData.estado,
-                },
-                dataServico: Timestamp.fromDate(new Date(newOrderData.dataServico + 'T00:00:00')),
-                periodo: newOrderData.periodoInicio,
-                valorServicoBruto: Number(newOrderData.valorOfertado),
-                formaPagamento: newOrderData.formaPagamento,
-                requisitos: newOrderData.requisitos,
-                advertencias: newOrderData.advertencias,
-                necessitaAutorizacao: newOrderData.necessitaAutorizacao,
-                status: 'pendente',
-                dataSolicitacao: Timestamp.now(),
-                cliente: 'Empresa Cliente Teste',
-            };
-            const docRef = await addDoc(collection(db, "solicitacoes"), dataToSave);
-            alert(`Ordem de Serviço criada com sucesso! ID: ${docRef.id}`);
-            closeNewOrderModal();
-        } catch (error) {
-            console.error("Erro ao criar Ordem de Serviço: ", error);
-            alert("Ocorreu um erro ao criar a OS. Verifique o console para mais detalhes.");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+        const dataToSave = {
+            descricaoServico: newOrderData.descricaoServico,
+            endereco: {
+                cep: newOrderData.cep, logradouro: newOrderData.logradouro,
+                numero: newOrderData.numero, complemento: newOrderData.complemento,
+                bairro: newOrderData.bairro, cidade: newOrderData.cidade, estado: newOrderData.estado,
+            },
+            dataServico: Timestamp.fromDate(new Date(newOrderData.dataServico + 'T00:00:00')),
+            periodo: newOrderData.periodoInicio,
+            valorServicoBruto: Number(newOrderData.valorOfertado),
+            formaPagamento: newOrderData.formaPagamento,
+            requisitos: newOrderData.requisitos,
+            advertencias: newOrderData.advertencias,
+            necessitaAutorizacao: newOrderData.necessitaAutorizacao,
+            status: 'pendente',
+            dataSolicitacao: Timestamp.now(),
+            cliente: 'Empresa Cliente Teste',
+        };
+        const docRef = await addDoc(collection(db, "solicitacoes"), dataToSave);
+        alert(`Ordem de Serviço criada com sucesso! ID: ${docRef.id}`);
+        
+        // NOVO: A única linha que adicionamos. Ela "lança o sinalizador".
+        window.dispatchEvent(new CustomEvent('os-criada'));
+
+        closeNewOrderModal();
+    } catch (error) {
+        console.error("Erro ao criar Ordem de Serviço: ", error);
+        alert("Ocorreu um erro ao criar a OS. Verifique o console para mais detalhes.");
+    } finally {
+        setIsSubmitting(false);
+    }
+};
 
     const handleLogout = () => { navigate('/login'); };
 
