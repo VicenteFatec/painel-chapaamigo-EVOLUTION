@@ -1,0 +1,49 @@
+/* Estilos para src/pages/HistoricoPage.css */
+
+.historico-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem; /* Espaçamento entre os elementos principais */
+}
+
+.abas-container {
+    display: flex;
+    border-bottom: 2px solid #e5e7eb; /* Linha divisória para as abas */
+    margin-bottom: 1rem;
+}
+
+.aba-button {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #6b7280; /* Cor da aba inativa */
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+
+.aba-button:hover {
+    color: #1f2937; /* Cor ao passar o mouse */
+}
+
+.aba-button.active {
+    color: #4f46e5; /* Cor da aba ativa - um roxo/azul forte */
+    border-bottom-color: #4f46e5;
+    font-weight: 600;
+}
+
+.conteudo-abas {
+    padding: 1rem;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.conteudo-abas h2 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+    color: #111827;
+}

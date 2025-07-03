@@ -323,3 +323,133 @@
 .alocar-btn:hover {
     background-color: #059669;
 }
+/* === OPERAÇÃO 'DOCUMENTO DE GALA' === */
+
+/* Container geral do documento dentro do modal */
+.documento-gala-container {
+    background-color: #fff;
+    padding: 2.5rem;
+    color: #111827;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Cabeçalho com Logo e Título */
+.gala-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+}
+
+.gala-logo {
+    max-height: 50px;
+}
+
+.gala-title h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    text-align: right;
+}
+
+.gala-title p {
+    margin: 0;
+    text-align: right;
+    font-size: 1rem;
+    color: #6b7280;
+}
+
+/* Seções com bordas */
+.gala-section {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    padding: 1rem 1.5rem 1.5rem 1.5rem;
+    position: relative;
+}
+
+.gala-section-title {
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #4b5563;
+    background-color: #fff;
+    padding: 0 0.5rem;
+    position: absolute;
+    top: -0.6rem;
+    left: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Itens de detalhe dentro das seções */
+.gala-item {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px dashed #f3f4f6;
+}
+.gala-item:last-child {
+    border-bottom: none;
+}
+
+.gala-label {
+    font-weight: 600;
+    text-align: right;
+    color: #4b5563;
+}
+
+.gala-dado {
+    font-weight: 500;
+}
+
+.gala-dado.alocado {
+    font-weight: bold;
+}
+
+.gala-dado.descricao {
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+/* Rodapé */
+.gala-footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #9ca3af;
+}
+
+/* === MÁGICA DA IMPRESSÃO ATUALIZADA === */
+@media print {
+    body * { visibility: hidden; }
+
+    .printable-area, .printable-area * {
+        visibility: visible;
+        color: #000 !important; /* Força todo texto a ser preto */
+    }
+
+    .printable-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+    }
+    
+    /* Evita quebras de página ruins */
+    .gala-section {
+        page-break-inside: avoid;
+    }
+
+    /* Esconde o nosso rodapé "gerado por" para dar lugar ao do navegador */
+    .gala-footer {
+        display: none;
+    }
+}

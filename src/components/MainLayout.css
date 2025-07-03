@@ -332,3 +332,52 @@
     border-color: #9ca3af;
     cursor: not-allowed;
 }
+/* === CSS PARA O NOVO LAYOUT DO MODAL DE DETALHES === */
+
+/* Remove o H3 de dentro do modal para evitar redundância */
+.curadoria-coluna h3 {
+    display: none;
+}
+
+/* O container principal dos detalhes, agora em formato de grid */
+.detalhes-solicitacao {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* Espaço entre cada linha de informação */
+}
+
+/* Cada linha (ex: Cliente + Nome) */
+.detalhe-item {
+    display: grid;
+    grid-template-columns: 140px 1fr; /* Coluna da esquerda fixa, coluna da direita flexível */
+    gap: 1rem; /* Espaço entre o rótulo e o dado */
+    align-items: start;
+}
+
+/* O Rótulo (ex: "Cliente:", "Local:") */
+.detalhe-label {
+    font-weight: 600;
+    color: #4b5563; /* Cinza escuro */
+    text-align: right; /* Alinha à direita para proximidade com o dado */
+    white-space: nowrap; /* Impede que o rótulo quebre a linha */
+}
+
+/* O Dado (ex: "Nome da Empresa", "Endereço Completo") */
+.detalhe-dado {
+    font-weight: 500;
+    color: #1f2937; /* Preto suave */
+}
+
+/* Estilo especial para o nome do trabalhador alocado */
+.detalhe-dado.alocado {
+    font-weight: bold;
+    color: #16a34a; /* Verde */
+}
+
+/* A linha divisória, agora com mais controle */
+.detalhes-divisor-novo {
+    border: none;
+    height: 1px;
+    background-color: #e5e7eb; /* Cinza claro */
+    margin: 0.5rem 0;
+}

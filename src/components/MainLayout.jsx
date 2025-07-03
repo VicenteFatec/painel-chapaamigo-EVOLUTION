@@ -1,6 +1,7 @@
+// CÓDIGO COMPLETO E CORRIGIDO PARA: src/components/MainLayout.jsx
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, ClipboardList, LogOut, Award, PlusCircle, DollarSign, Archive, MapPin, Building, Info, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, LogOut, Award, PlusCircle, DollarSign, Archive, MapPin, Building, Info, AlertTriangle, Calendar, Loader2 } from 'lucide-react';
 import './MainLayout.css';
 import Modal from './Modal';
 import { db } from '../firebaseConfig';
@@ -13,7 +14,7 @@ const getPageTitle = (pathname) => {
         case '/operacoes': return 'Mesa de Operações';
         case '/talentos': return 'Gestão de Trabalhadores';
         case '/frota': return 'Minha Frota';
-        case '/historico': return 'Histórico e Relatórios'; // Título para a nova página
+        case '/historico': return 'Central de Inteligência'; // Título para a nova página
         default: return 'Painel';
     }
 };
@@ -154,7 +155,6 @@ function MainLayout() {
                     <NavLink to="/operacoes" className="nav-link"><ClipboardList size={20} /><span>Mesa de Operações</span></NavLink>
                     <NavLink to="/talentos" className="nav-link"><Award size={20} /><span>Gestão de Trabalhadores</span></NavLink>
                     <NavLink to="/frota" className="nav-link"><Users size={20} /><span>Minha Frota</span></NavLink>
-                    {/* PASSO FINAL: Adicionar o link para a nova página de Histórico */}
                     <NavLink to="/historico" className="nav-link"><Archive size={20} /><span>Histórico</span></NavLink>
                 </nav>
                 <div className="sidebar-footer">
@@ -216,54 +216,54 @@ function MainLayout() {
                             <div className="input-group"><label htmlFor="bairro">Bairro</label><input type="text" id="bairro" name="bairro" value={newOrderData.bairro} onChange={handleNewOrderInputChange} required /></div>
                             <div className="input-group"><label htmlFor="cidade">Cidade</label><input type="text" id="cidade" name="cidade" value={newOrderData.cidade} onChange={handleNewOrderInputChange} required /></div>
                              <div className="input-group">
-                                <label htmlFor="estado">Estado</label>
-                                <select id="estado" name="estado" value={newOrderData.estado} onChange={handleNewOrderInputChange} required>
-                                    {estadosBrasileiros.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                                </select>
-                            </div>
-                        </div>
+                                 <label htmlFor="estado">Estado</label>
+                                 <select id="estado" name="estado" value={newOrderData.estado} onChange={handleNewOrderInputChange} required>
+                                     {estadosBrasileiros.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                                 </select>
+                             </div>
+                         </div>
                     </div>
                     <div className="form-section">
                         <h3 className="form-section-title"><Calendar size={20} /> Data e Hora</h3>
                         <div className="form-row">
                              <div className="input-group">
-                                <label htmlFor="dataServico">Data do Serviço</label>
-                                <input type="date" id="dataServico" name="dataServico" value={newOrderData.dataServico} onChange={handleNewOrderInputChange} required />
-                            </div>
-                            <div className="input-group">
-                                <label htmlFor="periodoInicio">Período de Início</label>
-                                <select id="periodoInicio" name="periodoInicio" value={newOrderData.periodoInicio} onChange={handleNewOrderInputChange} required>
-                                    <option value="">Selecione...</option>
-                                    <option value="Imediato">Imediato</option>
-                                    <option value="Manhã (08h-12h)">Manhã (08h-12h)</option>
-                                    <option value="Tarde (13h-18h)">Tarde (13h-18h)</option>
-                                    <option value="Noite (19h-22h)">Noite (19h-22h)</option>
-                                </select>
-                            </div>
+                                 <label htmlFor="dataServico">Data do Serviço</label>
+                                 <input type="date" id="dataServico" name="dataServico" value={newOrderData.dataServico} onChange={handleNewOrderInputChange} required />
+                             </div>
+                             <div className="input-group">
+                                 <label htmlFor="periodoInicio">Período de Início</label>
+                                 <select id="periodoInicio" name="periodoInicio" value={newOrderData.periodoInicio} onChange={handleNewOrderInputChange} required>
+                                     <option value="">Selecione...</option>
+                                     <option value="Imediato">Imediato</option>
+                                     <option value="Manhã (08h-12h)">Manhã (08h-12h)</option>
+                                     <option value="Tarde (13h-18h)">Tarde (13h-18h)</option>
+                                     <option value="Noite (19h-22h)">Noite (19h-22h)</option>
+                                 </select>
+                             </div>
                         </div>
                     </div>
                     <div className="form-section">
                         <h3 className="form-section-title"><DollarSign size={20} /> Detalhes Financeiros</h3>
                         <div className="form-row">
                              <div className="input-group">
-                                <label htmlFor="valorOfertado">Valor Ofertado (R$)</label>
-                                <input type="number" step="0.01" id="valorOfertado" name="valorOfertado" value={newOrderData.valorOfertado} onChange={handleNewOrderInputChange} placeholder="Ex: 150.00" required />
-                            </div>
-                            <div className="input-group">
-                                <label htmlFor="formaPagamento">Forma de Pagamento</label>
-                                <select id="formaPagamento" name="formaPagamento" value={newOrderData.formaPagamento} onChange={handleNewOrderInputChange} required>
-                                    <option value="PIX">PIX</option>
-                                    <option value="Dinheiro">Dinheiro</option>
-                                    <option value="Faturado">Faturado</option>
-                                </select>
-                            </div>
+                                 <label htmlFor="valorOfertado">Valor Ofertado (R$)</label>
+                                 <input type="number" step="0.01" id="valorOfertado" name="valorOfertado" value={newOrderData.valorOfertado} onChange={handleNewOrderInputChange} placeholder="Ex: 150.00" required />
+                             </div>
+                             <div className="input-group">
+                                 <label htmlFor="formaPagamento">Forma de Pagamento</label>
+                                 <select id="formaPagamento" name="formaPagamento" value={newOrderData.formaPagamento} onChange={handleNewOrderInputChange} required>
+                                     <option value="PIX">PIX</option>
+                                     <option value="Dinheiro">Dinheiro</option>
+                                     <option value="Faturado">Faturado</option>
+                                 </select>
+                             </div>
                         </div>
                     </div>
                      <div className="form-section">
-                        <h3 className="form-section-title"><AlertTriangle size={20} /> Requisitos e Advertências</h3>
-                        <div className="input-group full-width"><label htmlFor="requisitos">Requisitos (EPIs, etc.)</label><textarea id="requisitos" name="requisitos" rows="2" value={newOrderData.requisitos} onChange={handleNewOrderInputChange} placeholder="Ex: Obrigatório uso de capacete e botas." /></div>
-                        <div className="input-group full-width"><label htmlFor="advertencias">Advertências Importantes</label><textarea id="advertencias" name="advertencias" rows="2" value={newOrderData.advertencias} onChange={handleNewOrderInputChange} placeholder="Ex: Proibido uso de celular na área de descarga." /></div>
-                    </div>
+                         <h3 className="form-section-title"><AlertTriangle size={20} /> Requisitos e Advertências</h3>
+                         <div className="input-group full-width"><label htmlFor="requisitos">Requisitos (EPIs, etc.)</label><textarea id="requisitos" name="requisitos" rows="2" value={newOrderData.requisitos} onChange={handleNewOrderInputChange} placeholder="Ex: Obrigatório uso de capacete e botas." /></div>
+                         <div className="input-group full-width"><label htmlFor="advertencias">Advertências Importantes</label><textarea id="advertencias" name="advertencias" rows="2" value={newOrderData.advertencias} onChange={handleNewOrderInputChange} placeholder="Ex: Proibido uso de celular na área de descarga." /></div>
+                     </div>
                     <div className="form-section">
                         <div className="checkbox-group">
                             <input type="checkbox" id="necessitaAutorizacao" name="necessitaAutorizacao" checked={newOrderData.necessitaAutorizacao} onChange={handleNewOrderInputChange} />

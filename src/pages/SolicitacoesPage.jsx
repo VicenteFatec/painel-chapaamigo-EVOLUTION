@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+// ARQUIVO COMPLETO: A VERSÃO CORRIGIDA E BEM ESTRUTURADA de src/pages/SolicitacoesPage.jsx
+import React, { useState, useEffect, useRef } from 'react';
 import './SolicitacoesPage.css';
 import Modal from '../components/Modal';
 import CartaoOS from '../components/CartaoOS';
-import { Clock, CheckCircle, XCircle, FileText, User, Eye, Ticket, Search, X, Loader2, Hourglass, Archive } from 'lucide-react';
-
-// Firebase
+import { Clock, CheckCircle, XCircle, FileText, User, Ticket, Search, X, Loader2, Hourglass, Archive, Printer } from 'lucide-react';
 import { db, functions } from '../firebaseConfig';
-// PASSO 1: Importar onSnapshot para escutar em tempo real
-import { collection, query, where, orderBy, doc, writeBatch, Timestamp, getDoc, updateDoc, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, Timestamp, getDoc, updateDoc, onSnapshot, getDocs, writeBatch } from 'firebase/firestore';
 import { httpsCallable } from "firebase/functions";
 
 const getStatusInfo = (status) => {
@@ -40,41 +38,26 @@ function SolicitacoesPage() {
     const [isAlocando, setIsAlocando] = useState(false);
 
     const enviarConvite = httpsCallable(functions, 'enviarConviteOS');
-
-    // PASSO 2: Substituir a busca única pelo listener em tempo real
+    
     useEffect(() => {
         setIsLoading(true);
         const solicitacoesCollectionRef = collection(db, "solicitacoes");
         const statusVisiveis = ["pendente", "aguardando_resposta", "confirmado", "finalizado", "cancelado"];
+        const q = query(solicitacoesCollectionRef, where("status", "in", statusVisiveis), orderBy("dataSolicitacao", "desc"));
         
-        const q = query(
-            solicitacoesCollectionRef,
-            where("status", "in", statusVisiveis),
-            orderBy("dataSolicitacao", "desc")
-        );
-
-        // onSnapshot abre o "vídeo ao vivo". Qualquer mudança na query, ele executa o callback.
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const solicitacoesList = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             setSolicitacoes(solicitacoesList);
             setIsLoading(false);
         }, (error) => {
-            // Callback de erro
             console.error("Erro ao escutar atualizações de solicitações: ", error);
             setIsLoading(false);
         });
-
-        // PASSO 3: Função de limpeza. Quando o componente sair da tela, a conexão é fechada.
-        // Isso é crucial para performance e para evitar cobranças desnecessárias.
+        
         return () => unsubscribe();
-
-    }, []); // O array vazio [] garante que o listener seja criado apenas uma vez.
-
-    // A função fetchSolicitacoes() foi removida pois onSnapshot agora faz o trabalho.
-    // As chamadas a fetchSolicitacoes() foram removidas das outras funções, pois a tela se atualiza sozinha.
+    }, []);
 
     const buscarTrabalhadores = async (regiao = null, termoBusca = '') => {
-        // ... (esta função permanece inalterada)
         setIsLoadingSugeridos(true);
         setTrabalhadoresSugeridos([]);
         try {
@@ -105,8 +88,6 @@ function SolicitacoesPage() {
     };
 
     const handleVerDetalhes = (solicitacao) => {
-        // ... (esta função permanece inalterada)
-        console.log('1. Botão clicado. A função handleVerDetalhes foi chamada para a OS com ID:', solicitacao.id);
         setSolicitacaoSelecionada(solicitacao);
         setIsDetalhesModalOpen(true);
         if (solicitacao.status === 'pendente') {
@@ -114,19 +95,25 @@ function SolicitacoesPage() {
         }
     };
 
-    const handleSearchChange = (e) => { setSearchTerm(e.target.value); };
-    const handleSearchSubmit = (e) => { e.preventDefault(); buscarTrabalhadores(null, searchTerm); };
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+    };
+
+    const handleSearchSubmit = (e) => {
+        e.preventDefault();
+        buscarTrabalhadores(null, searchTerm);
+    };
+
     const clearSearch = () => {
         setSearchTerm('');
         if (solicitacaoSelecionada) {
             buscarTrabalhadores(solicitacaoSelecionada.regiao);
         }
     };
+
     const handleVerTicket = async (solicitacao) => {
-        // ... (esta função permanece inalterada)
         if (!solicitacao.chapaAlocadoId) return;
         setTrabalhadorSelecionado(null);
-        console.log('Botão Ver Ticket clicado para a OS:', solicitacao.id);
         const trabalhadorRef = doc(db, "chapas_b2b", solicitacao.chapaAlocadoId);
         const trabalhadorDoc = await getDoc(trabalhadorRef);
         if (trabalhadorDoc.exists()) {
@@ -137,15 +124,15 @@ function SolicitacoesPage() {
             alert("Não foi possível encontrar os dados do trabalhador alocado.");
         }
     };
+
     const fecharDetalhesModal = () => {
-        // ... (esta função permanece inalterada)
         setIsDetalhesModalOpen(false);
         setSolicitacaoSelecionada(null);
         setTrabalhadoresSugeridos([]);
         setSearchTerm('');
     };
+
     const fecharTicketModal = () => {
-        // ... (esta função permanece inalterada)
         setIsTicketModalOpen(false);
         setSolicitacaoSelecionada(null);
         setTrabalhadorSelecionado(null);
@@ -159,30 +146,23 @@ function SolicitacoesPage() {
         setIsAlocando(true);
         try {
             const solicitacaoRef = doc(db, "solicitacoes", solicitacaoSelecionada.id);
-            // A atualização do status aqui já será refletida em tempo real na tela principal
             await updateDoc(solicitacaoRef, { status: 'aguardando_resposta' });
-            
             const dadosParaEnvio = {
                 chapaId: chapa.id,
                 nomeChapa: chapa.nomeCompleto,
                 telefoneChapa: chapa.telefone,
                 idOS: solicitacaoSelecionada.id,
-                // Corrigindo para usar os campos corretos que definimos na ConvitePage
                 nomeEmpresa: solicitacaoSelecionada.cliente,
                 localServico: `${solicitacaoSelecionada.endereco.logradouro}, ${solicitacaoSelecionada.endereco.numero}`,
                 valorServicoBruto: solicitacaoSelecionada.valorServicoBruto,
                 tipoCarga: solicitacaoSelecionada.descricaoServico,
             };
-
-            const resultado = await enviarConvite(dadosParaEnvio);
+            await enviarConvite(dadosParaEnvio);
             alert(`Convite via WhatsApp enviado para ${chapa.nomeCompleto}!`);
-            console.log("Resultado do convite:", resultado.data);
-            // A chamada fetchSolicitacoes() foi removida daqui
             fecharDetalhesModal();
         } catch (error) {
             console.error("Erro ao enviar convite: ", error);
-            alert(`Ocorreu um erro ao tentar enviar o convite. Verifique o console.\n\nDetalhe: ${error.message}`);
-            // Reverte o status em caso de erro
+            alert(`Ocorreu um erro ao tentar enviar o convite: ${error.message}`);
             const solicitacaoRef = doc(db, "solicitacoes", solicitacaoSelecionada.id);
             await updateDoc(solicitacaoRef, { status: 'pendente' });
         } finally {
@@ -203,25 +183,28 @@ function SolicitacoesPage() {
             const chapaRef = doc(db, "chapas_b2b", solicitacao.chapaAlocadoId);
             batch.update(chapaRef, { status: 'Disponível' });
             await batch.commit();
-            // A chamada fetchSolicitacoes() foi removida daqui
-        } catch (error) { console.error("Erro ao finalizar serviço: ", error); }
+        } catch (error) {
+            console.error("Erro ao finalizar serviço: ", error);
+        }
     };
     
     const handleArquivarServico = async (solicitacaoId) => {
-        if (!window.confirm("Tem certeza que deseja arquivar este serviço? Ele sairá da sua mesa de operações, mas continuará no seu histórico para consultas.")) {
+        if (!window.confirm("Tem certeza que deseja arquivar este serviço?")) {
             return;
         }
         try {
             const solicitacaoRef = doc(db, "solicitacoes", solicitacaoId);
             await updateDoc(solicitacaoRef, { status: 'arquivado' });
-            // A chamada fetchSolicitacoes() foi removida daqui
         } catch (error) {
             console.error("Erro ao arquivar serviço:", error);
             alert("Ocorreu um erro ao tentar arquivar o serviço.");
         }
     };
+    
+    const handlePrint = () => {
+        window.print();
+    };
 
-    // O restante do seu JSX permanece o mesmo
     return (
         <div>
             <div className="solicitacoes-header">
@@ -232,14 +215,14 @@ function SolicitacoesPage() {
                 <table className="solicitacoes-table">
                     <thead>
                         <tr>
-                            <th>Cliente / Trabalhador Alocado</th>
+                            <th>Cliente / Trabalhador</th>
                             <th>Datas</th>
                             <th>Status</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {isLoading ? (<tr> <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}> <Loader2 size={24} className="animate-spin inline-block mr-2" /> Carregando solicitações...</td> </tr>) : solicitacoes.length > 0 ? (
+                        {isLoading ? (<tr> <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}> <Loader2 size={24} className="animate-spin inline-block mr-2" /> Carregando...</td> </tr>) : solicitacoes.length > 0 ? (
                             solicitacoes.map((solicitacao) => {
                                 const statusInfo = getStatusInfo(solicitacao.status);
                                 return (
@@ -261,24 +244,9 @@ function SolicitacoesPage() {
                                             <div className="acoes-cell">
                                                 {solicitacao.status === 'pendente' && (<button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Encontrar Chapa </button>)}
                                                 {solicitacao.status === 'aguardando_resposta' && (<button className="view-details-button-disabled" disabled> Aguardando... </button>)}
-                                                {solicitacao.status === 'confirmado' && (<> <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Ver Detalhes </button> <button className="ticket-button" onClick={() => handleVerTicket(solicitacao)} title="Ver Ticket de Serviço"> <Ticket size={16} /> Ver Ticket </button> <button className="finish-button" onClick={() => handleFinalizarServico(solicitacao)}> Finalizar Serviço </button> </>)}
-                                                {solicitacao.status === 'finalizado' && (
-                                                    <>
-                                                        <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Ver Detalhes </button>
-                                                        <button className="ticket-button" onClick={() => handleVerTicket(solicitacao)} title="Ver Ticket de Serviço"> <Ticket size={16} /> Ver Ticket </button>
-                                                        <button className="archive-button" onClick={() => handleArquivarServico(solicitacao.id)} title="Arquivar Serviço">
-                                                            <Archive size={16} /> Arquivar
-                                                        </button>
-                                                    </>
-                                                )}
-                                                {solicitacao.status === 'cancelado' && (
-                                                    <>
-                                                        <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Ver Detalhes </button>
-                                                        <button className="archive-button" onClick={() => handleArquivarServico(solicitacao.id)} title="Arquivar Serviço">
-                                                            <Archive size={16} /> Arquivar
-                                                        </button>
-                                                    </>
-                                                )}
+                                                {solicitacao.status === 'confirmado' && (<> <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Ver Detalhes </button> <button className="ticket-button" onClick={() => handleVerTicket(solicitacao)}> <Ticket size={16} /> Ver Ticket </button> <button className="finish-button" onClick={() => handleFinalizarServico(solicitacao)}> Finalizar </button> </>)}
+                                                {solicitacao.status === 'finalizado' && ( <> <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Ver Detalhes </button> <button className="ticket-button" onClick={() => handleVerTicket(solicitacao)}> <Ticket size={16} /> Ver Ticket </button> <button className="archive-button" onClick={() => handleArquivarServico(solicitacao.id)}> <Archive size={16} /> Arquivar </button> </> )}
+                                                {solicitacao.status === 'cancelado' && ( <> <button className="view-details-button" onClick={() => handleVerDetalhes(solicitacao)}> Ver Detalhes </button> <button className="archive-button" onClick={() => handleArquivarServico(solicitacao.id)}> <Archive size={16} /> Arquivar </button> </> )}
                                             </div>
                                         </td>
                                     </tr>
@@ -289,92 +257,65 @@ function SolicitacoesPage() {
                 </table>
             </div>
             
-            <Modal isOpen={isDetalhesModalOpen} onClose={fecharDetalhesModal} title={solicitacaoSelecionada?.status === 'pendente' ? `Encontrar Trabalhador para: ${solicitacaoSelecionada?.cliente}` : `Resumo da Operação: ${solicitacaoSelecionada?.cliente}`}>
-                <div className="curadoria-container">
-                    <div className="curadoria-coluna">
-                        <h3>{solicitacaoSelecionada?.status === 'pendente' ? 'Detalhes do Pedido' : 'Resumo da Operação'}</h3>
-                        <div className="detalhes-solicitacao">
-                            <div className="detalhe-item">
-                                <strong>Cliente:</strong>
-                                <p>{solicitacaoSelecionada?.cliente}</p>
-                            </div>
-                            <div className="detalhe-item">
-                                <strong>Local:</strong>
-                                <p>{solicitacaoSelecionada?.endereco?.logradouro}, {solicitacaoSelecionada?.endereco?.numero}</p>
-                            </div>
-                            {solicitacaoSelecionada?.observacoes && (
-                                <div className="detalhe-item">
-                                    <strong>Observações:</strong>
-                                    <p>{solicitacaoSelecionada?.observacoes}</p>
+            <Modal isOpen={isDetalhesModalOpen} onClose={fecharDetalhesModal} title={solicitacaoSelecionada?.status === 'pendente' ? 'Encontrar Trabalhador' : ''} hideHeader={solicitacaoSelecionada?.status !== 'pendente'}>
+                {solicitacaoSelecionada?.status !== 'pendente' ? (
+                    <div>
+                        <div className="printable-area documento-gala-container">
+                            <header className="gala-header">
+                                <img src="/images/logochapa.svg" alt="Chapa Amigo Empresas" className="gala-logo" />
+                                <div className="gala-title">
+                                    <h2>Documento de Serviço</h2>
+                                    <p>OS #{solicitacaoSelecionada?.id.substring(0, 8).toUpperCase()}</p>
                                 </div>
-                            )}
-                            {solicitacaoSelecionada?.chapaAlocadoNome && (
-                                <div className="detalhe-item">
-                                    <strong>Trabalhador Alocado:</strong>
-                                    <p style={{ fontWeight: 'bold', color: '#16a34a' }}>{solicitacaoSelecionada?.chapaAlocadoNome}</p>
-                                </div>
-                            )}
-                            <hr className="detalhes-divisor" />
-                            <div className="detalhe-item">
-                                <strong>Solicitado em:</strong>
-                                <p>{solicitacaoSelecionada?.dataSolicitacao.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</p>
-                            </div>
-                            {solicitacaoSelecionada?.timestampInicio && (
-                                <div className="detalhe-item">
-                                    <strong>Início do Serviço:</strong>
-                                    <p>{solicitacaoSelecionada?.timestampInicio.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</p>
-                                </div>
-                            )}
-                            {solicitacaoSelecionada?.timestampFim && (
-                                <div className="detalhe-item">
-                                    <strong>Fim do Serviço:</strong>
-                                    <p>{solicitacaoSelecionada?.timestampFim.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</p>
-                                </div>
-                            )}
+                            </header>
+                            <section className="gala-section">
+                                <h3 className="gala-section-title">Detalhes da Operação</h3>
+                                <div className="gala-item"><span className="gala-label">Cliente:</span><span className="gala-dado">{solicitacaoSelecionada?.cliente}</span></div>
+                                <div className="gala-item"><span className="gala-label">Local:</span><span className="gala-dado">{`${solicitacaoSelecionada?.endereco?.logradouro}, ${solicitacaoSelecionada?.endereco?.numero} - ${solicitacaoSelecionada?.endereco?.bairro}, ${solicitacaoSelecionada?.endereco?.cidade}-${solicitacaoSelecionada?.endereco?.estado}`}</span></div>
+                                {solicitacaoSelecionada?.chapaAlocadoNome && (<div className="gala-item"><span className="gala-label">Trabalhador:</span><span className="gala-dado alocado">{solicitacaoSelecionada?.chapaAlocadoNome}</span></div>)}
+                            </section>
+                            <section className="gala-section">
+                                <h3 className="gala-section-title">Escopo do Serviço</h3>
+                                <div className="gala-item"><span className="gala-label">Descrição:</span><span className="gala-dado descricao">{solicitacaoSelecionada?.descricaoServico}</span></div>
+                                {solicitacaoSelecionada?.requisitos && (<div className="gala-item"><span className="gala-label">Requisitos:</span><span className="gala-dado">{solicitacaoSelecionada?.requisitos}</span></div>)}
+                                {solicitacaoSelecionada?.advertencias && (<div className="gala-item"><span className="gala-label">Advertências:</span><span className="gala-dado">{solicitacaoSelecionada?.advertencias}</span></div>)}
+                            </section>
+                            <section className="gala-section">
+                                <h3 className="gala-section-title">Informações Financeiras e Temporais</h3>
+                                <div className="gala-item"><span className="gala-label">Valor Ofertado:</span><span className="gala-dado">R$ {solicitacaoSelecionada?.valorServicoBruto?.toFixed(2).replace('.', ',')}</span></div>
+                                <div className="gala-item"><span className="gala-label">Pagamento:</span><span className="gala-dado">{solicitacaoSelecionada?.formaPagamento}</span></div>
+                                <div className="gala-item"><span className="gala-label">Solicitado em:</span><span className="gala-dado">{solicitacaoSelecionada?.dataSolicitacao.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span></div>
+                                {solicitacaoSelecionada?.timestampFim && (<div className="gala-item"><span className="gala-label">Fim do Serviço:</span><span className="gala-dado">{solicitacaoSelecionada?.timestampFim.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span></div>)}
+                            </section>
+                            <footer className="gala-footer">Documento gerado por Chapa Amigo Empresas</footer>
+                        </div>
+                        <div className="modal-footer-actions" style={{justifyContent: 'flex-end', paddingTop: '1rem'}}>
+                            <button onClick={handlePrint} className="print-button"><Printer size={16} /> Imprimir / Salvar PDF</button>
                         </div>
                     </div>
-                    {solicitacaoSelecionada?.status === 'pendente' && (
+                ) : (
+                    <div className="curadoria-container">
                         <div className="curadoria-coluna">
                             <h3>Buscar Trabalhadores</h3>
                             <div className="search-container">
-                                <form onSubmit={handleSearchSubmit} className="search-form">
-                                    <div className="search-input-wrapper">
-                                        <Search size={18} className="search-icon" />
-                                        <input type="text" placeholder="Buscar por nome em toda a base..." value={searchTerm} onChange={handleSearchChange} />
-                                    </div>
-                                    <button type="submit">Buscar</button>
-                                </form>
-                                <button onClick={clearSearch} className="clear-search-button">
-                                    <X size={14} /> Limpar e ver sugestões
-                                </button>
+                                <form onSubmit={handleSearchSubmit} className="search-form"><div className="search-input-wrapper"><Search size={18} className="search-icon" /><input type="text" placeholder="Buscar por nome..." value={searchTerm} onChange={handleSearchChange} /></div><button type="submit">Buscar</button></form>
+                                <button onClick={clearSearch} className="clear-search-button"><X size={14} /> Limpar e ver sugestões</button>
                             </div>
                             {isLoadingSugeridos ? (<p style={{ textAlign: 'center', flexGrow: 1 }}>Buscando...</p>) : (
                                 <div className="lista-sugeridos">
                                     {trabalhadoresSugeridos.length > 0 ? (
                                         trabalhadoresSugeridos.map(chapa => (
                                             <div key={chapa.id} className="sugerido-item">
-                                                <div className="sugerido-info">
-                                                    {chapa.fotoURL ? <img src={chapa.fotoURL} alt={chapa.nomeCompleto} className="sugerido-avatar" /> : <div className="user-avatar" style={{ width: '40px', height: '40px' }}><User size={18} /></div>}
-                                                    <div>
-                                                        <span className="sugerido-nome">{chapa.nomeCompleto}</span>
-                                                        <span className="sugerido-regiao">{chapa.regiao}</span>
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    className="alocar-btn"
-                                                    onClick={() => handleAlocarChapa(chapa)}
-                                                    disabled={isAlocando}
-                                                >
-                                                    {isAlocando ? <Loader2 size={16} className="animate-spin" /> : 'Alocar'}
-                                                </button>
+                                                <div className="sugerido-info">{chapa.fotoURL ? <img src={chapa.fotoURL} alt={chapa.nomeCompleto} className="sugerido-avatar" /> : <div className="user-avatar" style={{ width: '40px', height: '40px' }}><User size={18} /></div>}<div><span className="sugerido-nome">{chapa.nomeCompleto}</span><span className="sugerido-regiao">{chapa.regiao}</span></div></div>
+                                                <button className="alocar-btn" onClick={() => handleAlocarChapa(chapa)} disabled={isAlocando}>{isAlocando ? <Loader2 size={16} className="animate-spin" /> : 'Alocar'}</button>
                                             </div>
                                         ))
                                     ) : (<p style={{ textAlign: 'center', padding: '1rem' }}>Nenhum trabalhador encontrado.</p>)}
                                 </div>
                             )}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </Modal>
 
             <Modal isOpen={isTicketModalOpen} onClose={fecharTicketModal} title="Ticket de Serviço">
