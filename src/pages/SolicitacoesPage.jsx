@@ -6,7 +6,8 @@ import { Clock, CheckCircle, XCircle, FileText, User, Eye, Ticket, Search, X, Lo
 
 // Firebase
 import { db, functions } from '../firebaseConfig';
-import { collection, getDocs, query, where, orderBy, doc, writeBatch, Timestamp, getDoc, updateDoc } from 'firebase/firestore';
+// PASSO 1: Importar onSnapshot para escutar em tempo real
+import { collection, query, where, orderBy, doc, writeBatch, Timestamp, getDoc, updateDoc, onSnapshot, getDocs } from 'firebase/firestore';
 import { httpsCallable } from "firebase/functions";
 
 const getStatusInfo = (status) => {
@@ -40,35 +41,40 @@ function SolicitacoesPage() {
 
     const enviarConvite = httpsCallable(functions, 'enviarConviteOS');
 
-    const fetchSolicitacoes = async () => {
-        setIsLoading(true);
-        try {
-            const solicitacoesCollectionRef = collection(db, "solicitacoes");
-            const statusVisiveis = ["pendente", "aguardando_resposta", "confirmado", "finalizado", "cancelado"];
-            const q = query(solicitacoesCollectionRef,
-                where("status", "in", statusVisiveis),
-                orderBy("dataSolicitacao", "desc")
-            );
-            const data = await getDocs(q);
-            const solicitacoesList = data.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setSolicitacoes(solicitacoesList);
-        } catch (error) { console.error("Erro ao buscar solicitações: ", error); }
-        finally { setIsLoading(false); }
-    };
-
+    // PASSO 2: Substituir a busca única pelo listener em tempo real
     useEffect(() => {
-        fetchSolicitacoes();
-        const handleOsCriada = () => {
-            console.log("Sinal 'os-criada' recebido! Atualizando a lista...");
-            fetchSolicitacoes();
-        };
-        window.addEventListener('os-criada', handleOsCriada);
-        return () => {
-            window.removeEventListener('os-criada', handleOsCriada);
-        };
-    }, []);
+        setIsLoading(true);
+        const solicitacoesCollectionRef = collection(db, "solicitacoes");
+        const statusVisiveis = ["pendente", "aguardando_resposta", "confirmado", "finalizado", "cancelado"];
+        
+        const q = query(
+            solicitacoesCollectionRef,
+            where("status", "in", statusVisiveis),
+            orderBy("dataSolicitacao", "desc")
+        );
+
+        // onSnapshot abre o "vídeo ao vivo". Qualquer mudança na query, ele executa o callback.
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const solicitacoesList = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            setSolicitacoes(solicitacoesList);
+            setIsLoading(false);
+        }, (error) => {
+            // Callback de erro
+            console.error("Erro ao escutar atualizações de solicitações: ", error);
+            setIsLoading(false);
+        });
+
+        // PASSO 3: Função de limpeza. Quando o componente sair da tela, a conexão é fechada.
+        // Isso é crucial para performance e para evitar cobranças desnecessárias.
+        return () => unsubscribe();
+
+    }, []); // O array vazio [] garante que o listener seja criado apenas uma vez.
+
+    // A função fetchSolicitacoes() foi removida pois onSnapshot agora faz o trabalho.
+    // As chamadas a fetchSolicitacoes() foram removidas das outras funções, pois a tela se atualiza sozinha.
 
     const buscarTrabalhadores = async (regiao = null, termoBusca = '') => {
+        // ... (esta função permanece inalterada)
         setIsLoadingSugeridos(true);
         setTrabalhadoresSugeridos([]);
         try {
@@ -99,6 +105,7 @@ function SolicitacoesPage() {
     };
 
     const handleVerDetalhes = (solicitacao) => {
+        // ... (esta função permanece inalterada)
         console.log('1. Botão clicado. A função handleVerDetalhes foi chamada para a OS com ID:', solicitacao.id);
         setSolicitacaoSelecionada(solicitacao);
         setIsDetalhesModalOpen(true);
@@ -116,6 +123,7 @@ function SolicitacoesPage() {
         }
     };
     const handleVerTicket = async (solicitacao) => {
+        // ... (esta função permanece inalterada)
         if (!solicitacao.chapaAlocadoId) return;
         setTrabalhadorSelecionado(null);
         console.log('Botão Ver Ticket clicado para a OS:', solicitacao.id);
@@ -130,12 +138,14 @@ function SolicitacoesPage() {
         }
     };
     const fecharDetalhesModal = () => {
+        // ... (esta função permanece inalterada)
         setIsDetalhesModalOpen(false);
         setSolicitacaoSelecionada(null);
         setTrabalhadoresSugeridos([]);
         setSearchTerm('');
     };
     const fecharTicketModal = () => {
+        // ... (esta função permanece inalterada)
         setIsTicketModalOpen(false);
         setSolicitacaoSelecionada(null);
         setTrabalhadorSelecionado(null);
@@ -149,25 +159,30 @@ function SolicitacoesPage() {
         setIsAlocando(true);
         try {
             const solicitacaoRef = doc(db, "solicitacoes", solicitacaoSelecionada.id);
+            // A atualização do status aqui já será refletida em tempo real na tela principal
             await updateDoc(solicitacaoRef, { status: 'aguardando_resposta' });
+            
             const dadosParaEnvio = {
                 chapaId: chapa.id,
                 nomeChapa: chapa.nomeCompleto,
                 telefoneChapa: chapa.telefone,
                 idOS: solicitacaoSelecionada.id,
+                // Corrigindo para usar os campos corretos que definimos na ConvitePage
                 nomeEmpresa: solicitacaoSelecionada.cliente,
-                localServico: solicitacaoSelecionada.local,
-                valorServicoBruto: solicitacaoSelecionada.valorProposto,
-                tipoCarga: solicitacaoSelecionada.tipoCarga,
+                localServico: `${solicitacaoSelecionada.endereco.logradouro}, ${solicitacaoSelecionada.endereco.numero}`,
+                valorServicoBruto: solicitacaoSelecionada.valorServicoBruto,
+                tipoCarga: solicitacaoSelecionada.descricaoServico,
             };
+
             const resultado = await enviarConvite(dadosParaEnvio);
             alert(`Convite via WhatsApp enviado para ${chapa.nomeCompleto}!`);
             console.log("Resultado do convite:", resultado.data);
-            fetchSolicitacoes();
+            // A chamada fetchSolicitacoes() foi removida daqui
             fecharDetalhesModal();
         } catch (error) {
             console.error("Erro ao enviar convite: ", error);
             alert(`Ocorreu um erro ao tentar enviar o convite. Verifique o console.\n\nDetalhe: ${error.message}`);
+            // Reverte o status em caso de erro
             const solicitacaoRef = doc(db, "solicitacoes", solicitacaoSelecionada.id);
             await updateDoc(solicitacaoRef, { status: 'pendente' });
         } finally {
@@ -188,7 +203,7 @@ function SolicitacoesPage() {
             const chapaRef = doc(db, "chapas_b2b", solicitacao.chapaAlocadoId);
             batch.update(chapaRef, { status: 'Disponível' });
             await batch.commit();
-            fetchSolicitacoes();
+            // A chamada fetchSolicitacoes() foi removida daqui
         } catch (error) { console.error("Erro ao finalizar serviço: ", error); }
     };
     
@@ -199,13 +214,14 @@ function SolicitacoesPage() {
         try {
             const solicitacaoRef = doc(db, "solicitacoes", solicitacaoId);
             await updateDoc(solicitacaoRef, { status: 'arquivado' });
-            fetchSolicitacoes();
+            // A chamada fetchSolicitacoes() foi removida daqui
         } catch (error) {
             console.error("Erro ao arquivar serviço:", error);
             alert("Ocorreu um erro ao tentar arquivar o serviço.");
         }
     };
 
+    // O restante do seu JSX permanece o mesmo
     return (
         <div>
             <div className="solicitacoes-header">
@@ -223,7 +239,7 @@ function SolicitacoesPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {isLoading ? (<tr> <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>Carregando solicitações...</td> </tr>) : solicitacoes.length > 0 ? (
+                        {isLoading ? (<tr> <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}> <Loader2 size={24} className="animate-spin inline-block mr-2" /> Carregando solicitações...</td> </tr>) : solicitacoes.length > 0 ? (
                             solicitacoes.map((solicitacao) => {
                                 const statusInfo = getStatusInfo(solicitacao.status);
                                 return (
@@ -272,8 +288,6 @@ function SolicitacoesPage() {
                     </tbody>
                 </table>
             </div>
-
-            {console.log('2. Página renderizada. O modal de detalhes deveria estar aberto?', isDetalhesModalOpen)}
             
             <Modal isOpen={isDetalhesModalOpen} onClose={fecharDetalhesModal} title={solicitacaoSelecionada?.status === 'pendente' ? `Encontrar Trabalhador para: ${solicitacaoSelecionada?.cliente}` : `Resumo da Operação: ${solicitacaoSelecionada?.cliente}`}>
                 <div className="curadoria-container">
@@ -286,7 +300,7 @@ function SolicitacoesPage() {
                             </div>
                             <div className="detalhe-item">
                                 <strong>Local:</strong>
-                                <p>{solicitacaoSelecionada?.local}</p>
+                                <p>{solicitacaoSelecionada?.endereco?.logradouro}, {solicitacaoSelecionada?.endereco?.numero}</p>
                             </div>
                             {solicitacaoSelecionada?.observacoes && (
                                 <div className="detalhe-item">

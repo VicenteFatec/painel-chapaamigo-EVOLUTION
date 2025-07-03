@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, ClipboardList, LogOut, Award, PlusCircle, DollarSign, CreditCard, AlignLeft, Calendar, Clock, Truck, Archive, MapPin, Building, Info, AlertTriangle, ShieldCheck, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, LogOut, Award, PlusCircle, DollarSign, Archive, MapPin, Building, Info, AlertTriangle } from 'lucide-react';
 import './MainLayout.css';
 import Modal from './Modal';
 import { db } from '../firebaseConfig';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, getDocs } from 'firebase/firestore';
 import { IMaskInput } from 'react-imask';
 
 const getPageTitle = (pathname) => {
@@ -13,6 +13,7 @@ const getPageTitle = (pathname) => {
         case '/operacoes': return 'Mesa de Operações';
         case '/talentos': return 'Gestão de Trabalhadores';
         case '/frota': return 'Minha Frota';
+        case '/historico': return 'Histórico e Relatórios'; // Título para a nova página
         default: return 'Painel';
     }
 };
@@ -20,6 +21,7 @@ const getPageTitle = (pathname) => {
 const estadosBrasileiros = [ "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO" ];
 
 const VALORES_INICIAIS_OS = {
+    frotaId: '', 
     descricaoServico: '',
     cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: 'SP',
     dataServico: '', periodoInicio: '',
@@ -33,10 +35,21 @@ function MainLayout() {
     const location = useLocation();
     const userEmail = "teste@empresa.com"; 
     
+    const [frota, setFrota] = useState([]);
     const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
     const [newOrderData, setNewOrderData] = useState(VALORES_INICIAIS_OS);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCepLoading, setIsCepLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchFrota = async () => {
+            const frotaCollectionRef = collection(db, "frota");
+            const data = await getDocs(frotaCollectionRef);
+            const frotaList = data.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            setFrota(frotaList);
+        };
+        fetchFrota();
+    }, []);
 
     const handleNewOrderClick = () => { setIsNewOrderModalOpen(true); };
     const closeNewOrderModal = () => {
@@ -85,47 +98,52 @@ function MainLayout() {
     }, [newOrderData.cep]);
 
     const handleNewOrderSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-        const dataToSave = {
-            descricaoServico: newOrderData.descricaoServico,
-            endereco: {
-                cep: newOrderData.cep, logradouro: newOrderData.logradouro,
-                numero: newOrderData.numero, complemento: newOrderData.complemento,
-                bairro: newOrderData.bairro, cidade: newOrderData.cidade, estado: newOrderData.estado,
-            },
-            dataServico: Timestamp.fromDate(new Date(newOrderData.dataServico + 'T00:00:00')),
-            periodo: newOrderData.periodoInicio,
-            valorServicoBruto: Number(newOrderData.valorOfertado),
-            formaPagamento: newOrderData.formaPagamento,
-            requisitos: newOrderData.requisitos,
-            advertencias: newOrderData.advertencias,
-            necessitaAutorizacao: newOrderData.necessitaAutorizacao,
-            status: 'pendente',
-            dataSolicitacao: Timestamp.now(),
-            cliente: 'Empresa Cliente Teste',
-        };
-        const docRef = await addDoc(collection(db, "solicitacoes"), dataToSave);
-        alert(`Ordem de Serviço criada com sucesso! ID: ${docRef.id}`);
-        
-        // NOVO: A única linha que adicionamos. Ela "lança o sinalizador".
-        window.dispatchEvent(new CustomEvent('os-criada'));
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            const membroDaFrotaSelecionado = frota.find(m => m.id === newOrderData.frotaId);
+            if (!membroDaFrotaSelecionado) {
+                alert("Por favor, selecione um cliente/veículo da frota.");
+                setIsSubmitting(false);
+                return;
+            }
 
-        closeNewOrderModal();
-    } catch (error) {
-        console.error("Erro ao criar Ordem de Serviço: ", error);
-        alert("Ocorreu um erro ao criar a OS. Verifique o console para mais detalhes.");
-    } finally {
-        setIsSubmitting(false);
-    }
-};
+            const dataToSave = {
+                descricaoServico: newOrderData.descricaoServico,
+                endereco: {
+                    cep: newOrderData.cep, logradouro: newOrderData.logradouro,
+                    numero: newOrderData.numero, complemento: newOrderData.complemento,
+                    bairro: newOrderData.bairro, cidade: newOrderData.cidade, estado: newOrderData.estado,
+                },
+                dataServico: Timestamp.fromDate(new Date(newOrderData.dataServico + 'T00:00:00')),
+                periodo: newOrderData.periodoInicio,
+                valorServicoBruto: Number(newOrderData.valorOfertado),
+                formaPagamento: newOrderData.formaPagamento,
+                requisitos: newOrderData.requisitos,
+                advertencias: newOrderData.advertencias,
+                necessitaAutorizacao: newOrderData.necessitaAutorizacao,
+                status: 'pendente',
+                dataSolicitacao: Timestamp.now(),
+                cliente: membroDaFrotaSelecionado.nome,
+                frotaId: membroDaFrotaSelecionado.id,
+            };
+            const docRef = await addDoc(collection(db, "solicitacoes"), dataToSave);
+            alert(`Ordem de Serviço criada com sucesso para '${membroDaFrotaSelecionado.nome}'!`);
+            
+            window.dispatchEvent(new CustomEvent('os-criada'));
+            closeNewOrderModal();
+        } catch (error) {
+            console.error("Erro ao criar Ordem de Serviço: ", error);
+            alert("Ocorreu um erro ao criar a OS. Verifique o console para mais detalhes.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     const handleLogout = () => { navigate('/login'); };
 
     return (
         <div className="main-layout">
-            {/* ===== CONTEÚDO DA SIDEBAR CORRIGIDO E COMPLETO ===== */}
             <aside className="sidebar">
                 <div className="sidebar-header">
                     <img src="/images/logo.svg" alt="Chapa Amigo Empresas Logo" className="logo" />
@@ -136,14 +154,15 @@ function MainLayout() {
                     <NavLink to="/operacoes" className="nav-link"><ClipboardList size={20} /><span>Mesa de Operações</span></NavLink>
                     <NavLink to="/talentos" className="nav-link"><Award size={20} /><span>Gestão de Trabalhadores</span></NavLink>
                     <NavLink to="/frota" className="nav-link"><Users size={20} /><span>Minha Frota</span></NavLink>
+                    {/* PASSO FINAL: Adicionar o link para a nova página de Histórico */}
+                    <NavLink to="/historico" className="nav-link"><Archive size={20} /><span>Histórico</span></NavLink>
                 </nav>
                 <div className="sidebar-footer">
                     <div className="user-info"><span className="user-email">{userEmail}</span></div>
                     <button onClick={handleLogout} className="logout-button"><LogOut size={20} /><span>Sair</span></button>
                 </div>
             </aside>
-            {/* ====================================================== */}
-
+            
             <main className="content">
                 <header className="content-header">
                     <h2 className="page-title">{getPageTitle(location.pathname)}</h2>
@@ -156,6 +175,20 @@ function MainLayout() {
 
             <Modal isOpen={isNewOrderModalOpen} onClose={closeNewOrderModal} title="Criar Nova Ordem de Serviço">
                 <form onSubmit={handleNewOrderSubmit} className="modal-form">
+                    <div className="form-section">
+                        <h3 className="form-section-title"><Building size={20} /> Cliente / Veículo</h3>
+                        <div className="input-group full-width">
+                           <label htmlFor="frotaId">Selecione o Cliente / Veículo</label>
+                           <select id="frotaId" name="frotaId" value={newOrderData.frotaId} onChange={handleNewOrderInputChange} required>
+                               <option value="" disabled>-- Escolha um item da sua frota --</option>
+                               {frota.map(membro => (
+                                   <option key={membro.id} value={membro.id}>
+                                       {membro.nome} (Placa: {membro.placa})
+                                   </option>
+                               ))}
+                           </select>
+                        </div>
+                    </div>
                     <div className="form-section">
                         <h3 className="form-section-title"><Info size={20} /> Informações Gerais</h3>
                         <div className="input-group full-width">
