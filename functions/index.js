@@ -1,18 +1,31 @@
 // ===================================================================
-// IMPORTAÇÕES E CONFIGURAÇÕES INICIAIS
+// ARQUIVO FINAL CORRIGIDO E MODERNIZADO - Válido para 04/07/2025
 // ===================================================================
+
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onRequest } = require("firebase-functions/v2/https");
 const { logger } = require("firebase-functions");
-const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const twilio = require("twilio");
 const axios = require("axios");
 
+// CORREÇÃO #2: Importa a função v2 para gatilhos do Firestore
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+
+const { defineString } = require('firebase-functions/params');
+
 admin.initializeApp();
 
+// DEFINIÇÃO DOS SEGREDOS COMO PARÂMETROS
+const twilioAccountSid = defineString("TWILIO_ACCOUNTSID");
+const twilioAuthToken = defineString("TWILIO_AUTHTOKEN");
+const twilioPhoneNumber = defineString("TWILIO_PHONE_NUMBER");
+// CORREÇÃO #1: Nome do segredo corrigido para o padrão do Firebase
+const googleMapsApiKey = defineString("MAPS_API_KEY");
+
+
 // ===================================================================
-// FUNÇÃO DE EXIBIÇÃO DE CONVITE (V4 - DADOS, LAYOUT E EXPIRAÇÃO)
+// FUNÇÃO DE EXIBIÇÃO DE CONVITE (SEM ALTERAÇÕES)
 // ===================================================================
 exports.exibirDetalhesOS = onRequest({ cors: true }, async (req, res) => {
     logger.info("Acessando página de detalhes da OS", { query: req.query });
@@ -32,7 +45,7 @@ exports.exibirDetalhesOS = onRequest({ cors: true }, async (req, res) => {
 
         const osData = osDoc.data();
         const dataSolicitacao = osData.dataSolicitacao.toDate();
-        const dataExpiracao = new Date(dataSolicitacao.getTime() + 15 * 60000); // 15 minutos
+        const dataExpiracao = new Date(dataSolicitacao.getTime() + 15 * 60000);
         const agora = new Date();
 
         if (agora > dataExpiracao) {
@@ -58,31 +71,29 @@ exports.exibirDetalhesOS = onRequest({ cors: true }, async (req, res) => {
 
 
 // ===================================================================
-// FUNÇÃO DE RECEBIMENTO DE RESPOSTA (V5 - FLUXO DE RECUSA INTELIGENTE)
+// FUNÇÃO DE RECEBIMENTO DE RESPOSTA (SEM ALTERAÇÕES)
 // ===================================================================
 exports.receberRespostaChapa = onRequest(async (req, res) => {
     const { From, Body } = req.body;
     const respostaLimpa = Body.trim();
-    const telefoneRemetente = From.replace('whatsapp:', '');
+    const telefoneRemetente = From; 
     const db = admin.firestore();
     const twiml = new twilio.twiml.MessagingResponse();
 
     logger.info(`Nova resposta de ${telefoneRemetente}: "${respostaLimpa}"`);
 
     try {
-        // Etapa 1: Verifica se é uma resposta para a pergunta do motivo de recusa
+        const telefoneChapaFormatado = telefoneRemetente.replace('whatsapp:', '');
         const snapshotMotivo = await db.collection("convites")
-            .where("telefoneChapa", "==", telefoneRemetente)
+            .where("telefoneChapa", "==", telefoneChapaFormatado)
             .where("status", "==", "recusado_aguardando_motivo")
             .limit(1).get();
 
         if (!snapshotMotivo.empty) {
             const conviteDoc = snapshotMotivo.docs[0];
             const motivos = {
-                "1": "O valor está abaixo do esperado",
-                "2": "Indisponível no momento",
-                "3": "Já estou em outro serviço",
-                "4": "Outro motivo"
+                "1": "O valor está abaixo do esperado", "2": "Indisponível no momento",
+                "3": "Já estou em outro serviço",   "4": "Outro motivo"
             };
             const motivoTexto = motivos[respostaLimpa] || `Resposta inválida: ${respostaLimpa}`;
             
@@ -95,7 +106,6 @@ exports.receberRespostaChapa = onRequest(async (req, res) => {
             logger.info(`Motivo da recusa (${motivoTexto}) registrado para o convite ${conviteDoc.id}.`);
         
         } else {
-            // Etapa 2: Processamento normal de ACEITAR/RECUSAR
             const partes = respostaLimpa.split('-');
             if (partes.length !== 2) {
                 logger.warn("Formato de resposta inválido. Ignorando.");
@@ -107,7 +117,7 @@ exports.receberRespostaChapa = onRequest(async (req, res) => {
 
             const snapshotConvite = await db.collection("convites")
                 .where("osId", "==", osId)
-                .where("telefoneChapa", "==", telefoneRemetente)
+                .where("telefoneChapa", "==", telefoneChapaFormatado)
                 .where("status", "==", "pendente")
                 .limit(1).get();
 
@@ -126,11 +136,26 @@ exports.receberRespostaChapa = onRequest(async (req, res) => {
                     const chapaRef = db.collection("chapas_b2b").doc(conviteData.chapaId);
                     batch.update(chapaRef, { status: 'Em Serviço' });
                     await batch.commit();
+                    
                     twiml.message('Sua resposta foi registrada. A plataforma Chapa Amigo agradece a sua atenção.');
                     logger.info(`Chapa ${conviteData.chapaId} ACEITOU o convite ${conviteDoc.id}.`);
+
+                    const twilioClient = new twilio(twilioAccountSid.value(), twilioAuthToken.value());
+                    
+                    const baseUrl = 'https://chapa-amigo-empresas.web.app';
+                    const ticketUrl = `${baseUrl}/ticket/${osId}`;
+                    const mensagemTicket = `Parabéns, seu trabalho está confirmado! 👷✅\n\nBaixe seu ticket de serviço e siga as orientações:\n${ticketUrl}`;
+                    
+                    await twilioClient.messages.create({
+                        from: `whatsapp:${twilioPhoneNumber.value()}`,
+                        to: telefoneRemetente,
+                        body: mensagemTicket,
+                    });
+                    logger.info(`Mensagem com link do ticket enviada para ${telefoneRemetente} para a OS ${osId}`);
+
                 } else if (acao === "RECUSAR") {
                     const osRef = db.collection("solicitacoes").doc(osId);
-                    await osRef.update({ status: "pendente" }); // Libera a OS para outro convite
+                    await osRef.update({ status: "pendente" });
                     await conviteDoc.ref.update({ status: "recusado_aguardando_motivo" });
                     
                     twiml.message("Que pena! Para nos ajudar a melhorar, por favor, responda com o NÚMERO do motivo:\n1. O valor está abaixo do esperado\n2. Indisponível no momento\n3. Já estou em outro serviço\n4. Outro motivo");
@@ -148,12 +173,12 @@ exports.receberRespostaChapa = onRequest(async (req, res) => {
 
 
 // ===================================================================
-// FUNÇÃO DE ENVIO DE CONVITE (SEM ALTERAÇÃO)
+// FUNÇÃO DE ENVIO DE CONVITE
 // ===================================================================
+// CORREÇÃO #3: Array 'secrets' removido das opções da função
 exports.enviarConviteOS = onCall(
     {
-        secrets: ["TWILIO_ACCOUNTSID", "TWILIO_AUTHTOKEN"],
-        cors: [/localhost:\d+$/, "https://chapa-amigo-empresas.web.app"],
+        cors: [/localhost:\d+$/, "https://chapa-amigo-empresas.web.app"]
     },
     async (request) => {
         if (!request.auth) {
@@ -161,9 +186,7 @@ exports.enviarConviteOS = onCall(
         }
 
         const { telefoneChapa, nomeChapa, idOS, chapaId, nomeEmpresa } = request.data;
-        const accountSid = process.env.TWILIO_ACCOUNTSID;
-        const authToken = process.env.TWILIO_AUTHTOKEN;
-        const client = twilio(accountSid, authToken);
+        const client = twilio(twilioAccountSid.value(), twilioAuthToken.value());
         
         if (!telefoneChapa || !nomeChapa || !idOS || !chapaId) {
             throw new HttpsError("invalid-argument", "Dados insuficientes (telefone, nome, idOS, chapaId são obrigatórios).");
@@ -194,7 +217,7 @@ exports.enviarConviteOS = onCall(
 
             await client.messages.create({
                 body: mensagem,
-                from: 'whatsapp:+14155238886',
+                from: `whatsapp:${twilioPhoneNumber.value()}`,
                 to:   `whatsapp:${numeroFormatado}`
             });
 
@@ -210,26 +233,30 @@ exports.enviarConviteOS = onCall(
 
 
 // ===================================================================
-// FUNÇÃO DE GEOCODIFICAÇÃO (SEM ALTERAÇÃO)
+// FUNÇÃO DE GEOCODIFICAÇÃO (MODERNIZADA PARA V2)
 // ===================================================================
-exports.geocodeAddressOnCreate = functions.firestore
-  .document("solicitacoes/{solicitacaoId}")
-  .onCreate(async (snapshot, context) => {
+exports.geocodeAddressOnCreate = onDocumentCreated("solicitacoes/{solicitacaoId}", async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) {
+        logger.log("Nenhum dado associado ao evento. Abortando.");
+        return;
+    }
+    
     const osData = snapshot.data();
-    const osId = context.params.solicitacaoId;
+    const osId = event.params.solicitacaoId;
 
     if (osData.latitude && osData.longitude) {
-      console.log(`OS ${osId} já possui coordenadas. Abortando.`);
-      return null;
+      logger.log(`OS ${osId} já possui coordenadas. Abortando.`);
+      return;
     }
 
     const address = `${osData.endereco.logradouro}, ${osData.endereco.numero}, ${osData.endereco.bairro}, ${osData.endereco.cidade}, ${osData.endereco.estado}`;
-    console.log(`Iniciando geocodificação para o endereço: ${address}`);
+    logger.log(`Iniciando geocodificação para o endereço: ${address}`);
 
-    const apiKey = functions.config().google.maps_api_key;
+    const apiKey = googleMapsApiKey.value();
     if (!apiKey) {
-      console.error("Chave da API do Google Maps não configurada!");
-      return null;
+      logger.error("Chave da API do Google Maps não configurada!");
+      return;
     }
 
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
@@ -242,17 +269,17 @@ exports.geocodeAddressOnCreate = functions.firestore
         const location = data.results[0].geometry.location;
         const latitude = location.lat;
         const longitude = location.lng;
-        console.log(`Coordenadas encontradas: Lat ${latitude}, Lng ${longitude}`);
+        logger.log(`Coordenadas encontradas: Lat ${latitude}, Lng ${longitude}`);
         return snapshot.ref.update({
           latitude: latitude,
           longitude: longitude,
         });
       } else {
-        console.error(`Erro de geocodificação: ${data.status}`, data.error_message || "");
-        return null;
+        logger.error(`Erro de geocodificação: ${data.status}`, data.error_message || "");
+        return;
       }
     } catch (error) {
-      console.error("Erro ao chamar a API de Geocodificação:", error);
-      return null;
+      logger.error("Erro ao chamar a API de Geocodificação:", error);
+      return;
     }
-  });
+});

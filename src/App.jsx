@@ -13,7 +13,8 @@ import MinhaFrotaPage from './pages/MinhaFrotaPage';
 import SolicitacoesPage from './pages/SolicitacoesPage';
 import GestaoDeTalentosPage from './pages/GestaoDeTalentosPage';
 import ConvitePage from './pages/ConvitePage';
-import HistoricoPage from './pages/HistoricoPage'; // PASSO 1: Importar a nova página
+import HistoricoPage from './pages/HistoricoPage';
+import TicketPage from './pages/TicketPage'; // <<< PASSO 1: Importar a página do Ticket
 import { Loader2 } from 'lucide-react';
 
 function App() {
@@ -39,10 +40,14 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Rota pública para o convite */}
+        {/* === ROTAS PÚBLICAS === */}
+        {/* Rota pública para a página de Convite */}
         <Route path="/convite/:osId" element={<ConvitePage />} />
+        
+        {/* Rota pública para a página do Ticket de Serviço */}
+        <Route path="/ticket/:osId" element={<TicketPage />} /> {/* <<< PASSO 2: Adicionar a nova rota pública */}
 
-        {/* Rotas protegidas para usuários logados */}
+        {/* === ROTAS PROTEGIDAS (Usuário Logado) === */}
         {user && (
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
@@ -50,12 +55,14 @@ function App() {
             <Route path="frota" element={<MinhaFrotaPage />} />
             <Route path="operacoes" element={<SolicitacoesPage />} />
             <Route path="talentos" element={<GestaoDeTalentosPage />} />
-            <Route path="historico" element={<HistoricoPage />} /> {/* PASSO 2: Adicionar a nova rota */}
+            <Route path="historico" element={<HistoricoPage />} />
+            {/* Redireciona qualquer outra rota protegida para o dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         )}
 
-        {/* Rota de fallback para usuários não logados */}
+        {/* === ROTA DE FALLBACK (Usuário Deslogado) === */}
+        {/* Se não há usuário, qualquer tentativa de acesso leva ao Login */}
         {!user && <Route path="*" element={<LoginPage />} />}
       </Routes>
     </Router>
