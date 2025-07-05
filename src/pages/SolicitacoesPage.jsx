@@ -1,34 +1,262 @@
-// ARQUIVO COMPLETO: A VERSÃO CORRIGIDA E BEM ESTRUTURADA de src/pages/SolicitacoesPage.jsx
-import React, { useState, useEffect, useRef } from 'react';
-import './SolicitacoesPage.css';
+import React, { useState, useEffect } from 'react';
+import { db, functions } from '../firebaseConfig';
+import { collection, query, where, orderBy, doc, Timestamp, getDoc, updateDoc, onSnapshot, getDocs, writeBatch, addDoc } from 'firebase/firestore';
+import { httpsCallable } from "firebase/functions";
+import { Clock, CheckCircle, XCircle, FileText, User, Ticket, Search, X, Loader2, Hourglass, Archive, Printer } from 'lucide-react';
+import InputMask from 'react-input-mask';
 import Modal from '../components/Modal';
 import CartaoOS from '../components/CartaoOS';
-import { Clock, CheckCircle, XCircle, FileText, User, Ticket, Search, X, Loader2, Hourglass, Archive, Printer } from 'lucide-react';
-import { db, functions } from '../firebaseConfig';
-import { collection, query, where, orderBy, doc, Timestamp, getDoc, updateDoc, onSnapshot, getDocs, writeBatch } from 'firebase/firestore';
-import { httpsCallable } from "firebase/functions";
+import './SolicitacoesPage.css';
+import axios from 'axios'; // Importado para a busca de CEP
 
-const getStatusInfo = (status) => {
-    switch (status) {
-        case 'pendente': return { icon: <Clock size={16} />, text: 'Pendente', color: 'text-yellow-500' };
-        case 'aguardando_resposta': return { icon: <Hourglass size={16} />, text: 'Aguardando Resposta', color: 'text-cyan-500' };
-        case 'confirmado': return { icon: <CheckCircle size={16} />, text: 'Chapa Confirmado', color: 'text-green-500' };
-        case 'finalizado': return { icon: <CheckCircle size={16} />, text: 'Serviço Finalizado', color: 'text-blue-500' };
-        case 'cancelado': return { icon: <XCircle size={16} />, text: 'Cancelado', color: 'text-red-500' };
-        case 'arquivado': return { icon: <Archive size={16} />, text: 'Arquivado', color: 'text-gray-400' };
-        default: return { icon: <FileText size={16} />, text: 'Status Desconhecido', color: 'text-gray-500' };
+// --- COMPONENTE DO FORMULÁRIO (AGORA COMPLETO E FUNCIONAL) ---
+const FormularioNovaOS = ({ onClose }) => {
+    const initialState = {
+        cliente: '',
+        veiculo: '',
+        descricaoServico: '',
+        estabelecimento: '',
+        endereco: { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' },
+        dataServico: '',
+        periodoInicio: 'Manhã (08:00 - 12:00)',
+        outroHorario: '',
+        prazoTermino: '',
+        valorServicoBruto: '',
+        formaPagamento: 'PIX',
+        requisitos: {
+            'Uso de botas/calçado de segurança': false, 'Uso de óculos de proteção': false,
+            'Uso de colete refletivo': false, 'Uso de capacete': false,
+            'Uso de cinta ergonômica': false, 'Uso de luvas': false,
+            'Levar documento original': false, 'Proibido uso de celular': false,
+        },
+        termosAceitos: false,
+    };
+
+    const [formData, setFormData] = useState(initialState);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleEnderecoChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, endereco: { ...prev.endereco, [name]: value } }));
+    };
+    
+    const handleCepChange = async (e) => {
+        const cep = e.target.value.replace(/\D/g, '');
+        handleEnderecoChange({ target: { name: 'cep', value: e.target.value } });
+
+        if (cep.length === 8) {
+            try {
+                const { data } = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
+                if (!data.erro) {
+                    setFormData(prev => ({
+                        ...prev,
+                        endereco: {
+                            ...prev.endereco,
+                            logradouro: data.logradouro,
+                            bairro: data.bairro,
+                            cidade: data.localidade,
+                            estado: data.uf,
+                        }
+                    }));
+                }
+            } catch (error) {
+                console.error("Erro ao buscar CEP:", error);
+            }
+        }
+    };
+
+    const handleRequisitoChange = (e) => {
+        const { name, checked } = e.target;
+        setFormData(prev => ({ ...prev, requisitos: { ...prev.requisitos, [name]: checked } }));
+    };
+    
+    const handleValorChange = (e) => {
+        const { value } = e.target;
+        const valorNumerico = value.replace(/[R$\.,]/g, '');
+        setFormData(prev => ({...prev, valorServicoBruto: valorNumerico}));
     }
+
+    const isPagamentoPlataforma = formData.formaPagamento === 'Pagamento pela Plataforma';
+    const isFormInvalid = isPagamentoPlataforma && !formData.termosAceitos;
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (isFormInvalid) {
+            alert("Você deve aceitar os termos e condições para pagamentos via plataforma.");
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            const valorFinal = parseFloat(formData.valorServicoBruto) / 100 || 0;
+            const dataServicoTimestamp = formData.dataServico ? Timestamp.fromDate(new Date(formData.dataServico)) : Timestamp.now();
+            const prazoTerminoTimestamp = formData.prazoTermino ? Timestamp.fromDate(new Date(formData.prazoTermino)) : null;
+
+            const docData = {
+                ...formData,
+                valorServicoBruto: valorFinal,
+                dataSolicitacao: dataServicoTimestamp,
+                prazoTermino: prazoTerminoTimestamp,
+                status: 'pendente',
+                timestampCriacao: Timestamp.now(),
+            };
+            
+            await addDoc(collection(db, "solicitacoes"), docData);
+            alert("Ordem de Serviço criada com sucesso!");
+            onClose();
+
+        } catch (error) {
+            console.error("Erro ao criar Ordem de Serviço: ", error);
+            alert("Falha ao criar a Ordem de Serviço. Tente novamente.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <div className="form-grid">
+                <div className="form-section">
+                    <h4 className="form-section-title">Informações Gerais</h4>
+                    <div className="form-group">
+                        <label>Cliente / Veículo</label>
+                        <input type="text" name="cliente" value={formData.cliente} onChange={handleInputChange} required placeholder="Nome do Cliente ou Empresa"/>
+                    </div>
+                    <div className="form-group">
+                        <label>Descrição do Serviço</label>
+                        <textarea name="descricaoServico" value={formData.descricaoServico} onChange={handleInputChange} rows="3" required placeholder="Ex: Carga e descarga de caixas..."></textarea>
+                    </div>
+                </div>
+
+                <div className="form-section">
+                    <h4 className="form-section-title">Endereço do Serviço</h4>
+                    <div className="form-group">
+                        <label>Estabelecimento (Opcional)</label>
+                        <input type="text" name="estabelecimento" value={formData.estabelecimento} onChange={handleInputChange} placeholder="Ex: Hypermercado Vende Mais"/>
+                    </div>
+                     <div className="form-group">
+                        <label>CEP</label>
+                        <input type="text" name="cep" value={formData.endereco.cep} onChange={handleCepChange} maxLength="9" placeholder="Digite o CEP"/>
+                    </div>
+                    <div className="form-group">
+                        <label>Rua / Logradouro</label>
+                        <input type="text" name="logradouro" value={formData.endereco.logradouro} onChange={handleEnderecoChange} required />
+                    </div>
+                    <div className="form-group">
+                        <label>Número</label>
+                        <input type="text" name="numero" value={formData.endereco.numero} onChange={handleEnderecoChange} required />
+                    </div>
+                     <div className="form-group">
+                        <label>Bairro</label>
+                        <input type="text" name="bairro" value={formData.endereco.bairro} onChange={handleEnderecoChange} required />
+                    </div>
+                     <div className="form-group">
+                        <label>Cidade</label>
+                        <input type="text" name="cidade" value={formData.endereco.cidade} onChange={handleEnderecoChange} required />
+                    </div>
+                     <div className="form-group">
+                        <label>Estado</label>
+                        <input type="text" name="estado" value={formData.endereco.estado} onChange={handleEnderecoChange} required maxLength="2" />
+                    </div>
+                </div>
+
+                <div className="form-section">
+                    <h4 className="form-section-title">Data e Hora</h4>
+                    <div className="form-group">
+                        <label>Data e Hora do Serviço</label>
+                        <input type="datetime-local" name="dataServico" value={formData.dataServico} onChange={handleInputChange} required />
+                    </div>
+                    <div className="form-group">
+                        <label>Período de Início</label>
+                        <div className="horario-outro-group">
+                            <select name="periodoInicio" value={formData.periodoInicio} onChange={handleInputChange}>
+                                <option>Manhã (08:00 - 12:00)</option>
+                                <option>Tarde (13:00 - 18:00)</option>
+                                <option>Noite (19:00 - 22:00)</option>
+                                <option>Outro</option>
+                            </select>
+                            {formData.periodoInicio === 'Outro' && (
+                                <input type="text" name="outroHorario" placeholder="Digite o horário" value={formData.outroHorario} onChange={handleInputChange} />
+                            )}
+                        </div>
+                    </div>
+                    <div className="form-group">
+                        <label>Prazo para Término (Opcional)</label>
+                        <input type="datetime-local" name="prazoTermino" value={formData.prazoTermino} onChange={handleInputChange} />
+                    </div>
+                </div>
+
+                <div className="form-section">
+                    <h4 className="form-section-title">Detalhes Financeiros</h4>
+                    <div className="form-group">
+                        <label>Valor Ofertado</label>
+                        <InputMask 
+                            mask="R$ 99.999,99" 
+                            maskChar={null}
+                            value={formData.valorServicoBruto}
+                            onChange={handleValorChange}
+                        >
+                            {(inputProps) => <input {...inputProps} type="text" placeholder="R$ 0,00" required />}
+                        </InputMask>
+                    </div>
+                    <div className="form-group">
+                        <label>Forma de Pagamento</label>
+                        <select name="formaPagamento" value={formData.formaPagamento} onChange={handleInputChange}>
+                            <option>PIX</option>
+                            <option>Dinheiro no Ato</option>
+                            <option>Pagamento pela Plataforma</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div className="form-section" style={{ gridColumn: '1 / -1' }}>
+                    <h4 className="form-section-title">Requisitos e Advertências</h4>
+                    <div className="requisitos-container">
+                        {Object.keys(formData.requisitos).map(req => (
+                            <div key={req} className="requisito-item">
+                                <input type="checkbox" id={req} name={req} checked={formData.requisitos[req]} onChange={handleRequisitoChange} />
+                                <label htmlFor={req}>{req.replace(/_/g, ' ')}</label>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                
+                <div className="form-section" style={{ gridColumn: '1 / -1' }}>
+                     <div className={`termos-container ${!isPagamentoPlataforma ? 'disabled' : ''}`}>
+                        <input 
+                            type="checkbox" 
+                            id="termosAceitos" 
+                            name="termosAceitos" 
+                            checked={formData.termosAceitos}
+                            onChange={(e) => setFormData(prev => ({...prev, termosAceitos: e.target.checked}))}
+                            disabled={!isPagamentoPlataforma}
+                        />
+                        <label htmlFor="termosAceitos">Li e aceito os termos e condições de pagamento pela Plataforma.</label>
+                    </div>
+                </div>
+            </div>
+
+            <div className="form-actions">
+                <button type="button" className="cancel-button" onClick={onClose}>Cancelar</button>
+                <button type="submit" className="submit-os-button" disabled={isSubmitting || isFormInvalid}>
+                    {isSubmitting ? <Loader2 className="animate-spin" /> : 'Criar Ordem de Serviço'}
+                </button>
+            </div>
+        </form>
+    );
 };
 
-const regioesSinonimos = {
-    'São Paulo (Capital)': ['SP (Capital)'],
-    'SP (Capital)': ['São Paulo (Capital)'],
-};
 
+// --- COMPONENTE PRINCIPAL DA PÁGINA ---
 function SolicitacoesPage() {
     const [solicitacoes, setSolicitacoes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isDetalhesModalOpen, setIsDetalhesModalOpen] = useState(false);
+    const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState(null);
     const [trabalhadoresSugeridos, setTrabalhadoresSugeridos] = useState([]);
     const [isLoadingSugeridos, setIsLoadingSugeridos] = useState(false);
@@ -37,13 +265,30 @@ function SolicitacoesPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isAlocando, setIsAlocando] = useState(false);
 
+    const regioesSinonimos = {
+        'São Paulo (Capital)': ['SP (Capital)'],
+        'SP (Capital)': ['São Paulo (Capital)'],
+    };
+    
+    const getStatusInfo = (status) => {
+        switch (status) {
+            case 'pendente': return { icon: <Clock size={16} />, text: 'Pendente', color: 'text-yellow-500' };
+            case 'aguardando_resposta': return { icon: <Hourglass size={16} />, text: 'Aguardando Resposta', color: 'text-cyan-500' };
+            case 'confirmado': return { icon: <CheckCircle size={16} />, text: 'Chapa Confirmado', color: 'text-green-500' };
+            case 'finalizado': return { icon: <CheckCircle size={16} />, text: 'Serviço Finalizado', color: 'text-blue-500' };
+            case 'cancelado': return { icon: <XCircle size={16} />, text: 'Cancelado', color: 'text-red-500' };
+            case 'arquivado': return { icon: <Archive size={16} />, text: 'Arquivado', color: 'text-gray-400' };
+            default: return { icon: <FileText size={16} />, text: 'Status Desconhecido', color: 'text-gray-500' };
+        }
+    };
+
     const enviarConvite = httpsCallable(functions, 'enviarConviteOS');
     
     useEffect(() => {
         setIsLoading(true);
         const solicitacoesCollectionRef = collection(db, "solicitacoes");
         const statusVisiveis = ["pendente", "aguardando_resposta", "confirmado", "finalizado", "cancelado"];
-        const q = query(solicitacoesCollectionRef, where("status", "in", statusVisiveis), orderBy("dataSolicitacao", "desc"));
+        const q = query(solicitacoesCollectionRef, where("status", "in", statusVisiveis), orderBy("timestampCriacao", "desc"));
         
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const solicitacoesList = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
@@ -74,7 +319,7 @@ function SolicitacoesPage() {
             } else if (regiao) {
                 const regioesValidas = [regiao, ...(regioesSinonimos[regiao] || [])];
                 chapasFiltrados = todosOsChapasDisponiveis.filter(chapa =>
-                    regioesValidas.includes(chapa.regiao?.trim())
+                    regioesValidas.some(r => chapa.regiao?.includes(r))
                 );
             } else {
                 chapasFiltrados = todosOsChapasDisponiveis;
@@ -91,7 +336,7 @@ function SolicitacoesPage() {
         setSolicitacaoSelecionada(solicitacao);
         setIsDetalhesModalOpen(true);
         if (solicitacao.status === 'pendente') {
-            buscarTrabalhadores(solicitacao.regiao);
+            buscarTrabalhadores(solicitacao.endereco.cidade);
         }
     };
 
@@ -107,7 +352,7 @@ function SolicitacoesPage() {
     const clearSearch = () => {
         setSearchTerm('');
         if (solicitacaoSelecionada) {
-            buscarTrabalhadores(solicitacaoSelecionada.regiao);
+            buscarTrabalhadores(solicitacaoSelecionada.endereco.cidade);
         }
     };
 
@@ -131,7 +376,7 @@ function SolicitacoesPage() {
         setTrabalhadoresSugeridos([]);
         setSearchTerm('');
     };
-
+    
     const fecharTicketModal = () => {
         setIsTicketModalOpen(false);
         setSolicitacaoSelecionada(null);
@@ -147,16 +392,15 @@ function SolicitacoesPage() {
         try {
             const solicitacaoRef = doc(db, "solicitacoes", solicitacaoSelecionada.id);
             await updateDoc(solicitacaoRef, { status: 'aguardando_resposta' });
+            
             const dadosParaEnvio = {
                 chapaId: chapa.id,
                 nomeChapa: chapa.nomeCompleto,
                 telefoneChapa: chapa.telefone,
                 idOS: solicitacaoSelecionada.id,
-                nomeEmpresa: solicitacaoSelecionada.cliente,
-                localServico: `${solicitacaoSelecionada.endereco.logradouro}, ${solicitacaoSelecionada.endereco.numero}`,
-                valorServicoBruto: solicitacaoSelecionada.valorServicoBruto,
-                tipoCarga: solicitacaoSelecionada.descricaoServico,
+                solicitacaoData: solicitacaoSelecionada 
             };
+
             await enviarConvite(dadosParaEnvio);
             alert(`Convite via WhatsApp enviado para ${chapa.nomeCompleto}!`);
             fecharDetalhesModal();
@@ -205,11 +449,17 @@ function SolicitacoesPage() {
         window.print();
     };
 
+
     return (
         <div>
             <div className="solicitacoes-header">
-                <h1 className="solicitacoes-title">Mesa de Operações</h1>
-                <p className="solicitacoes-subtitle">Visão geral de todas as solicitações de serviço dos clientes.</p>
+                <div>
+                    <h1 className="solicitacoes-title">Mesa de Operações</h1>
+                    <p className="solicitacoes-subtitle">Visão geral de todas as solicitações de serviço dos clientes.</p>
+                </div>
+                <button className="new-os-button" onClick={() => setIsFormModalOpen(true)}>
+                    + Criar Nova Ordem de Serviço
+                </button>
             </div>
             <div className="table-container">
                 <table className="solicitacoes-table">
@@ -222,23 +472,25 @@ function SolicitacoesPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {isLoading ? (<tr> <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}> <Loader2 size={24} className="animate-spin inline-block mr-2" /> Carregando...</td> </tr>) : solicitacoes.length > 0 ? (
+                        {isLoading ? (
+                            <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}><Loader2 size={24} className="animate-spin inline-block mr-2" /> Carregando...</td></tr>
+                        ) : solicitacoes.length > 0 ? (
                             solicitacoes.map((solicitacao) => {
                                 const statusInfo = getStatusInfo(solicitacao.status);
                                 return (
                                     <tr key={solicitacao.id}>
                                         <td>
                                             <div style={{ fontWeight: 600 }}>{solicitacao.cliente}</div>
-                                            {solicitacao.chapaAlocadoNome && (<div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '4px' }}> <span style={{ fontWeight: 500 }}>Alocado:</span> {solicitacao.chapaAlocadoNome} </div>)}
+                                            {solicitacao.chapaAlocadoNome && (<div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '4px' }}><span style={{ fontWeight: 500 }}>Alocado:</span> {solicitacao.chapaAlocadoNome}</div>)}
                                         </td>
                                         <td>
                                             <div className="datas-cell">
-                                                <span><strong>Solicitado:</strong> {solicitacao.dataSolicitacao.toDate().toLocaleDateString('pt-BR')}</span>
+                                                <span><strong>Serviço:</strong> {solicitacao.dataSolicitacao?.toDate().toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) || 'N/A'}</span>
                                                 {solicitacao.timestampFim && (<span><strong>Finalizado:</strong> {solicitacao.timestampFim.toDate().toLocaleDateString('pt-BR')}</span>)}
                                             </div>
                                         </td>
                                         <td>
-                                            <div className={`status-cell ${statusInfo.color}`}> {statusInfo.icon} <span>{statusInfo.text}</span> </div>
+                                            <div className={`status-cell ${statusInfo.color}`}>{statusInfo.icon}<span>{statusInfo.text}</span></div>
                                         </td>
                                         <td>
                                             <div className="acoes-cell">
@@ -252,13 +504,19 @@ function SolicitacoesPage() {
                                     </tr>
                                 );
                             })
-                        ) : (<tr> <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>Nenhuma solicitação ativa encontrada.</td> </tr>)}
+                        ) : (
+                            <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>Nenhuma solicitação ativa encontrada.</td></tr>
+                        )}
                     </tbody>
                 </table>
             </div>
             
-            <Modal isOpen={isDetalhesModalOpen} onClose={fecharDetalhesModal} title={solicitacaoSelecionada?.status === 'pendente' ? 'Encontrar Trabalhador' : ''} hideHeader={solicitacaoSelecionada?.status !== 'pendente'}>
-                {solicitacaoSelecionada?.status !== 'pendente' ? (
+            <Modal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} title="Criar Nova Ordem de Serviço">
+                <FormularioNovaOS onClose={() => setIsFormModalOpen(false)} />
+            </Modal>
+
+            <Modal isOpen={isDetalhesModalOpen} onClose={fecharDetalhesModal} title={solicitacaoSelecionada?.status === 'pendente' ? 'Encontrar Trabalhador' : 'Detalhes do Serviço'}>
+                 {solicitacaoSelecionada?.status !== 'pendente' ? (
                     <div>
                         <div className="printable-area documento-gala-container">
                             <header className="gala-header">
@@ -278,7 +536,6 @@ function SolicitacoesPage() {
                                 <h3 className="gala-section-title">Escopo do Serviço</h3>
                                 <div className="gala-item"><span className="gala-label">Descrição:</span><span className="gala-dado descricao">{solicitacaoSelecionada?.descricaoServico}</span></div>
                                 {solicitacaoSelecionada?.requisitos && (<div className="gala-item"><span className="gala-label">Requisitos:</span><span className="gala-dado">{solicitacaoSelecionada?.requisitos}</span></div>)}
-                                {solicitacaoSelecionada?.advertencias && (<div className="gala-item"><span className="gala-label">Advertências:</span><span className="gala-dado">{solicitacaoSelecionada?.advertencias}</span></div>)}
                             </section>
                             <section className="gala-section">
                                 <h3 className="gala-section-title">Informações Financeiras e Temporais</h3>

@@ -1,5 +1,5 @@
 // ===================================================================
-// ARQUIVO FINAL CORRIGIDO E MODERNIZADO - Válido para 04/07/2025
+// ARQUIVO FINAL CORRIGIDO E MODERNIZADO - Válido para 05/07/2025
 // ===================================================================
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
@@ -9,9 +9,7 @@ const admin = require("firebase-admin");
 const twilio = require("twilio");
 const axios = require("axios");
 
-// CORREÇÃO #2: Importa a função v2 para gatilhos do Firestore
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-
 const { defineString } = require('firebase-functions/params');
 
 admin.initializeApp();
@@ -20,12 +18,11 @@ admin.initializeApp();
 const twilioAccountSid = defineString("TWILIO_ACCOUNTSID");
 const twilioAuthToken = defineString("TWILIO_AUTHTOKEN");
 const twilioPhoneNumber = defineString("TWILIO_PHONE_NUMBER");
-// CORREÇÃO #1: Nome do segredo corrigido para o padrão do Firebase
 const googleMapsApiKey = defineString("MAPS_API_KEY");
 
 
 // ===================================================================
-// FUNÇÃO DE EXIBIÇÃO DE CONVITE (CORRIGIDA E ATUALIZADA)
+// FUNÇÃO DE EXIBIÇÃO DE CONVITE (ATUALIZADA PARA O FORMULÁRIO V2.0)
 // ===================================================================
 exports.exibirDetalhesOS = onRequest({ cors: true }, async (req, res) => {
     logger.info("Acessando página de detalhes da OS", { query: req.query });
@@ -45,19 +42,16 @@ exports.exibirDetalhesOS = onRequest({ cors: true }, async (req, res) => {
 
         const osData = osDoc.data();
         const dataSolicitacao = osData.dataSolicitacao.toDate();
-        const dataExpiracao = new Date(dataSolicitacao.getTime() + 15 * 60000);
-        const agora = new Date(); // O 'agora' do servidor, em UTC
+        // Aumentando o tempo de expiração para 1 hora para dar mais tempo ao chapa
+        const dataExpiracao = new Date(dataSolicitacao.getTime() + 60 * 60000);
+        const agora = new Date();
 
-        // CORREÇÃO DE FUSO HORÁRIO: Define as opções para formatar a data para o fuso de São Paulo
         const opcoesFormatoBrasilia = {
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'America/Sao_Paulo' // <-- A MÁGICA ACONTECE AQUI
+            hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
         };
         const horaExpiracaoFormatada = dataExpiracao.toLocaleTimeString('pt-BR', opcoesFormatoBrasilia);
 
         if (agora > dataExpiracao) {
-            // ATUALIZAÇÃO DA MENSAGEM: Adicionada a assinatura
             const htmlExpirado = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Convite Expirado</title><style>body{font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; color: #333;} .card{background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);}</style></head><body><div class="card"><h1>Convite Expirado</h1><p>Desculpe, mas este convite expirou às ${horaExpiracaoFormatada}.</p><p>Mantenha-se ligado e não perca as próximas oportunidades!</p><br><p>Atenciosamente,<br>Equipe Chapa Amigo</p></div></body></html>`;
             return res.status(410).send(htmlExpirado);
         }
@@ -68,9 +62,66 @@ exports.exibirDetalhesOS = onRequest({ cors: true }, async (req, res) => {
         const mensagemRecusa = `RECUSAR-${osId}`;
         
         const valorFormatado = typeof osData.valorServicoBruto === 'number' ? osData.valorServicoBruto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : "Não informado";
+        const estabelecimentoFormatado = osData.estabelecimento ? `<div class="detail-item"><span class="label">Estabelecimento</span> <span class="value">${osData.estabelecimento}</span></div>` : "";
         const localFormatado = osData.endereco ? `${osData.endereco.logradouro}, ${osData.endereco.numero} - ${osData.endereco.bairro}, ${osData.endereco.cidade}` : "Não informado";
+        const pagamentoFormatado = osData.formaPagamento || "Não informado";
+        const horarioFormatado = osData.periodoInicio === 'Outro' ? osData.outroHorario : osData.periodoInicio;
 
-        const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Convite de Serviço</title><link rel="icon" href="${faviconUrl}"><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f4f9;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:16px;box-sizing:border-box}.card{background-color:#fff;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.12);padding:24px 32px;width:100%;max-width:450px;text-align:center;transition:all .3s ease}h1{color:#333;font-size:22px;margin-bottom:8px}.details-grid{display:grid;grid-template-columns:1fr;gap:16px;text-align:left;margin-top:24px}.detail-item{padding-bottom:12px;border-bottom:1px solid #eee}.label{font-weight:600;color:#555;display:block;margin-bottom:4px;font-size:13px}.value{color:#111;font-size:16px}.actions{margin-top:32px;display:flex;flex-direction:column;gap:12px}a.button{text-decoration:none;color:#fff;padding:16px;border-radius:8px;font-weight:700;font-size:18px;display:block;transition:transform .2s,background-color .2s}a.button:active{transform:scale(.97)}.accept{background-color:#28a745}.accept:hover{background-color:#218838}.reject{background-color:#dc3545}.reject:hover{background-color:#c82333}.footer-note{font-size:12px;color:#888;margin-top:24px}</style></head><body><div class="card" id="invitation-card"><img src="${faviconUrl}" alt="Logo da Empresa" style="max-width:150px;margin-bottom:16px"><h1>Convite de Serviço</h1><div class="details-grid"><div class="detail-item"><span class="label">Empresa</span> <span class="value">${osData.cliente||"Não informado"}</span></div><div class="detail-item"><span class="label">Descrição</span> <span class="value">${osData.descricaoServico||"Não informado"}</span></div><div class="detail-item"><span class="label">Local</span> <span class="value">${localFormatado}</span></div><div class="detail-item"><span class="label">Valor</span> <span class="value">${valorFormatado}</span></div></div><div class="actions"><a href="https://wa.me/${twilioWhatsAppNumber}?text=${encodeURIComponent(mensagemAceite)}" class="button accept">✅ ACEITAR</a><a href="https://wa.me/${twilioWhatsAppNumber}?text=${encodeURIComponent(mensagemRecusa)}" class="button reject">❌ RECUSAR</a></div><p class="footer-note">Este convite expira às ${horaExpiracaoFormatada}.</p></div></body></html>`;
+        let requisitosHtml = '';
+        if (osData.requisitos && Object.keys(osData.requisitos).length > 0) {
+            const listaRequisitos = Object.entries(osData.requisitos)
+                .filter(([key, value]) => value === true)
+                .map(([key, value]) => `<li>${key.replace(/_/g, ' ')}</li>`)
+                .join('');
+
+            if (listaRequisitos) {
+                requisitosHtml = `
+                    <div class="detail-item requisitos">
+                        <span class="label">Requisitos e Advertências</span>
+                        <ul class="value-list">${listaRequisitos}</ul>
+                    </div>`;
+            }
+        }
+
+        const html = `
+            <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Convite de Serviço</title><link rel="icon" href="${faviconUrl}">
+            <style>
+                body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f4f9;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:16px;box-sizing:border-box}
+                .card{background-color:#fff;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.12);padding:24px 32px;width:100%;max-width:480px;text-align:center;transition:all .3s ease}
+                h1{color:#333;font-size:22px;margin-bottom:8px}
+                .details-grid{display:grid;grid-template-columns:1fr;gap:16px;text-align:left;margin-top:24px}
+                .detail-item{padding-bottom:12px;border-bottom:1px solid #eee}
+                .detail-item:last-child{border-bottom:none}
+                .label{font-weight:600;color:#555;display:block;margin-bottom:4px;font-size:13px;text-transform:uppercase}
+                .value{color:#111;font-size:16px}
+                .value-list{padding-left:20px;margin:0;font-size:15px;text-transform:capitalize;}
+                .actions{margin-top:32px;display:flex;flex-direction:column;gap:12px}
+                a.button{text-decoration:none;color:#fff;padding:16px;border-radius:8px;font-weight:700;font-size:18px;display:block;transition:transform .2s,background-color .2s}
+                a.button:active{transform:scale(.97)}
+                .accept{background-color:#28a745}.accept:hover{background-color:#218838}
+                .reject{background-color:#dc3545}.reject:hover{background-color:#c82333}
+                .footer-note{font-size:12px;color:#888;margin-top:24px}
+            </style>
+            </head><body><div class="card" id="invitation-card">
+                <img src="${faviconUrl}" alt="Logo da Empresa" style="max-width:150px;margin-bottom:16px">
+                <h1>Convite de Serviço</h1>
+                <div class="details-grid">
+                    <div class="detail-item"><span class="label">Empresa</span> <span class="value">${osData.cliente || "Não informado"}</span></div>
+                    ${estabelecimentoFormatado}
+                    <div class="detail-item"><span class="label">Local</span> <span class="value">${localFormatado}</span></div>
+                    <div class="detail-item"><span class="label">Descrição</span> <span class="value">${osData.descricaoServico || "Não informado"}</span></div>
+                    <div class="detail-item"><span class="label">Horário de Início</span> <span class="value">${horarioFormatado}</span></div>
+                    <div class="detail-item"><span class="label">Valor</span> <span class="value">${valorFormatado}</span></div>
+                    <div class="detail-item"><span class="label">Forma de Pagamento</span> <span class="value">${pagamentoFormatado}</span></div>
+                    ${requisitosHtml}
+                </div>
+                <div class="actions">
+                    <a href="https://wa.me/${twilioWhatsAppNumber}?text=${encodeURIComponent(mensagemAceite)}" class="button accept">✅ ACEITAR</a>
+                    <a href="https://wa.me/${twilioWhatsAppNumber}?text=${encodeURIComponent(mensagemRecusa)}" class="button reject">❌ RECUSAR</a>
+                </div>
+                <p class="footer-note">Este convite expira às ${horaExpiracaoFormatada}.</p>
+            </div></body></html>
+        `;
         return res.status(200).send(html);
     } catch (error) {
         logger.error("Erro ao gerar página de detalhes da OS:", error);
@@ -79,7 +130,7 @@ exports.exibirDetalhesOS = onRequest({ cors: true }, async (req, res) => {
 });
 
 // ===================================================================
-// FUNÇÃO DE RECEBIMENTO DE RESPOSTA (SEM ALTERAÇÕES)
+// FUNÇÃO DE RECEBIMENTO DE RESPOSTA (CÓDIGO RESTAURADO)
 // ===================================================================
 exports.receberRespostaChapa = onRequest(async (req, res) => {
     const { From, Body } = req.body;
@@ -147,8 +198,6 @@ exports.receberRespostaChapa = onRequest(async (req, res) => {
                     
                     logger.info(`Chapa ${conviteData.chapaId} ACEITOU o convite ${conviteDoc.id}.`);
 
-                    // A linha twiml.message() foi REMOVIDA daqui para não enviar a segunda mensagem.
-
                     const twilioClient = new twilio(twilioAccountSid.value(), twilioAuthToken.value());
                     
                     const baseUrl = 'https://chapa-amigo-empresas.web.app';
@@ -156,7 +205,7 @@ exports.receberRespostaChapa = onRequest(async (req, res) => {
                     const mensagemTicket = `Parabéns, seu trabalho está confirmado! 👷✅\n\nBaixe seu ticket de serviço e siga as orientações:\n${ticketUrl}`;
                     
                     await twilioClient.messages.create({
-                        from: 'whatsapp:+14155238886', // <-- CORRIGIDO
+                        from: `whatsapp:${twilioPhoneNumber.value()}`,
                         to: telefoneRemetente,
                         body: mensagemTicket,
                     });
@@ -182,71 +231,61 @@ exports.receberRespostaChapa = onRequest(async (req, res) => {
 
 
 // ===================================================================
-// FUNÇÃO DE ENVIO DE CONVITE
+// FUNÇÃO DE ENVIO DE CONVITE (ATUALIZADA PARA O FORMULÁRIO V2.0)
 // ===================================================================
-// CORREÇÃO #3: Array 'secrets' removido das opções da função
-exports.enviarConviteOS = onCall(
-    {
-        cors: [/localhost:\d+$/, "https://chapa-amigo-empresas.web.app"]
-    },
-    async (request) => {
-        if (!request.auth) {
-            throw new HttpsError("unauthenticated", "A função só pode ser chamada por usuários autenticados.");
-        }
-
-        const { telefoneChapa, nomeChapa, idOS, chapaId, nomeEmpresa } = request.data;
-        const client = new twilio(twilioAccountSid.value(), twilioAuthToken.value());
-        
-        if (!telefoneChapa || !nomeChapa || !idOS || !chapaId) {
-            throw new HttpsError("invalid-argument", "Dados insuficientes (telefone, nome, idOS, chapaId são obrigatórios).");
-        }
-
-        const numeroFormatado = `+55${String(telefoneChapa).replace(/\D/g, "")}`;
-        
-        try {
-            const db = admin.firestore();
-            const conviteRef = db.collection("convites").doc();
-
-            await conviteRef.set({
-                osId: idOS,
-                chapaId: chapaId,
-                nomeChapa: nomeChapa, 
-                telefoneChapa: numeroFormatado,
-                status: "pendente",
-                dataEnvio: admin.firestore.FieldValue.serverTimestamp(),
-            });
-
-            logger.info(`Convite ${conviteRef.id} para a OS ${idOS} registrado no Firestore.`);
-
-            const projectId = process.env.GCLOUD_PROJECT;
-            const functionRegion = "us-central1";
-            const linkPublico = `https://${functionRegion}-${projectId}.cloudfunctions.net/exibirDetalhesOS?id=${idOS}`;
-            
-            const mensagem = `Chapa Amigo: Olá ${nomeChapa}, a ${nomeEmpresa} tem um novo convite de serviço para você. Veja todos os detalhes e responda no link: ${linkPublico}`;
-
-            // =======================================================
-            // APLIQUE A CORREÇÃO AQUI
-            // =======================================================
-            await client.messages.create({
-                body: mensagem,
-                from: 'whatsapp:+14155238886',
-                to:   `whatsapp:${numeroFormatado}`
-            });
-            // =======================================================
-
-            logger.info(`Mensagem WhatsApp enviada para ${numeroFormatado}!`);
-            return { success: true, conviteId: conviteRef.id };
-
-        } catch (error) {
-            logger.error(`Erro ao enviar WhatsApp para ${numeroFormatado}:`, error);
-            throw new HttpsError("internal", "Falha ao enviar a mensagem via WhatsApp.", error);
-        }
+exports.enviarConviteOS = onCall({ cors: [/localhost:\d+$/, "https://chapa-amigo-empresas.web.app"] }, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "A função só pode ser chamada por usuários autenticados.");
     }
-);
+
+    const { telefoneChapa, nomeChapa, idOS, chapaId, solicitacaoData } = request.data;
+    const client = new twilio(twilioAccountSid.value(), twilioAuthToken.value());
+    
+    if (!telefoneChapa || !nomeChapa || !idOS || !chapaId || !solicitacaoData) {
+        throw new HttpsError("invalid-argument", "Dados insuficientes (telefone, nome, idOS, chapaId, solicitacaoData são obrigatórios).");
+    }
+
+    const numeroFormatado = `+55${String(telefoneChapa).replace(/\D/g, "")}`;
+    
+    try {
+        const db = admin.firestore();
+        const conviteRef = db.collection("convites").doc();
+
+        await conviteRef.set({
+            osId: idOS,
+            chapaId: chapaId,
+            nomeChapa: nomeChapa, 
+            telefoneChapa: numeroFormatado,
+            status: "pendente",
+            dataEnvio: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        logger.info(`Convite ${conviteRef.id} para a OS ${idOS} registrado no Firestore.`);
+
+        const projectId = process.env.GCLOUD_PROJECT;
+        const functionRegion = "us-central1";
+        const linkPublico = `https://${functionRegion}-${projectId}.cloudfunctions.net/exibirDetalhesOS?id=${idOS}`;
+        
+        const mensagem = `Chapa Amigo: Olá ${nomeChapa}, a ${solicitacaoData.cliente} tem um novo convite de serviço para você. Veja todos os detalhes e responda no link: ${linkPublico}`;
+
+        await client.messages.create({
+            body: mensagem,
+            from: `whatsapp:${twilioPhoneNumber.value()}`,
+            to:   `whatsapp:${numeroFormatado}`
+        });
+
+        logger.info(`Mensagem WhatsApp enviada para ${numeroFormatado}!`);
+        return { success: true, conviteId: conviteRef.id };
+
+    } catch (error) {
+        logger.error(`Erro ao enviar WhatsApp para ${numeroFormatado}:`, error);
+        throw new HttpsError("internal", "Falha ao enviar a mensagem via WhatsApp.", error);
+    }
+});
 
 
 // ===================================================================
-// FUNÇÃO DE GEOCODIFICAÇÃO (MODERNIZADA PARA V2)
+// FUNÇÃO DE GEOCODIFICAÇÃO (CÓDIGO RESTAURADO)
 // ===================================================================
 exports.geocodeAddressOnCreate = onDocumentCreated("solicitacoes/{solicitacaoId}", async (event) => {
     const snapshot = event.data;
@@ -259,8 +298,8 @@ exports.geocodeAddressOnCreate = onDocumentCreated("solicitacoes/{solicitacaoId}
     const osId = event.params.solicitacaoId;
 
     if (osData.latitude && osData.longitude) {
-      logger.log(`OS ${osId} já possui coordenadas. Abortando.`);
-      return;
+        logger.log(`OS ${osId} já possui coordenadas. Abortando.`);
+        return;
     }
 
     const address = `${osData.endereco.logradouro}, ${osData.endereco.numero}, ${osData.endereco.bairro}, ${osData.endereco.cidade}, ${osData.endereco.estado}`;
@@ -268,31 +307,31 @@ exports.geocodeAddressOnCreate = onDocumentCreated("solicitacoes/{solicitacaoId}
 
     const apiKey = googleMapsApiKey.value();
     if (!apiKey) {
-      logger.error("Chave da API do Google Maps não configurada!");
-      return;
+        logger.error("Chave da API do Google Maps não configurada!");
+        return;
     }
 
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
 
     try {
-      const response = await axios.get(url);
-      const data = response.data;
+        const response = await axios.get(url);
+        const data = response.data;
 
-      if (data.status === "OK") {
-        const location = data.results[0].geometry.location;
-        const latitude = location.lat;
-        const longitude = location.lng;
-        logger.log(`Coordenadas encontradas: Lat ${latitude}, Lng ${longitude}`);
-        return snapshot.ref.update({
-          latitude: latitude,
-          longitude: longitude,
-        });
-      } else {
-        logger.error(`Erro de geocodificação: ${data.status}`, data.error_message || "");
-        return;
-      }
+        if (data.status === "OK") {
+            const location = data.results[0].geometry.location;
+            const latitude = location.lat;
+            const longitude = location.lng;
+            logger.log(`Coordenadas encontradas: Lat ${latitude}, Lng ${longitude}`);
+            return snapshot.ref.update({
+                latitude: latitude,
+                longitude: longitude,
+            });
+        } else {
+            logger.error(`Erro de geocodificação: ${data.status}`, data.error_message || "");
+            return;
+        }
     } catch (error) {
-      logger.error("Erro ao chamar a API de Geocodificação:", error);
-      return;
+        logger.error("Erro ao chamar a API de Geocodificação:", error);
+        return;
     }
 });

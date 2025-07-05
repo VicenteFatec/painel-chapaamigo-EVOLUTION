@@ -12,10 +12,17 @@ import DashboardPage from './pages/DashboardPage';
 import MinhaFrotaPage from './pages/MinhaFrotaPage';
 import SolicitacoesPage from './pages/SolicitacoesPage';
 import GestaoDeTalentosPage from './pages/GestaoDeTalentosPage';
-import ConvitePage from './pages/ConvitePage';
 import HistoricoPage from './pages/HistoricoPage';
-import TicketPage from './pages/TicketPage'; // <<< PASSO 1: Importar a página do Ticket
+import TicketPage from './pages/TicketPage';
 import { Loader2 } from 'lucide-react';
+
+// Componente auxiliar para proteger rotas
+const ProtectedRoute = ({ user, children }) => {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
 
 function App() {
   const [user, setUser] = useState(null);
@@ -40,30 +47,31 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* === ROTAS PÚBLICAS === */}
-        {/* Rota pública para a página de Convite */}
-        <Route path="/convite/:osId" element={<ConvitePage />} />
-        
-        {/* Rota pública para a página do Ticket de Serviço */}
-        <Route path="/ticket/:osId" element={<TicketPage />} /> {/* <<< PASSO 2: Adicionar a nova rota pública */}
+        {/* ================================================================== */}
+        {/* ROTAS PÚBLICAS - Acessíveis por qualquer pessoa, a qualquer momento */}
+        {/* ================================================================== */}
+        <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <LoginPage />} />
+        <Route path="/ticket/:osId" element={<TicketPage />} />
 
-        {/* === ROTAS PROTEGIDAS (Usuário Logado) === */}
-        {user && (
-          <Route path="/" element={<MainLayout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="frota" element={<MinhaFrotaPage />} />
-            <Route path="operacoes" element={<SolicitacoesPage />} />
-            <Route path="talentos" element={<GestaoDeTalentosPage />} />
-            <Route path="historico" element={<HistoricoPage />} />
-            {/* Redireciona qualquer outra rota protegida para o dashboard */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Route>
-        )}
-
-        {/* === ROTA DE FALLBACK (Usuário Deslogado) === */}
-        {/* Se não há usuário, qualquer tentativa de acesso leva ao Login */}
-        {!user && <Route path="*" element={<LoginPage />} />}
+        {/* ================================================================== */}
+        {/* ROTAS PROTEGIDAS - Envelopadas pelo MainLayout e ProtectedRoute    */}
+        {/* ================================================================== */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute user={user}>
+              <MainLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="frota" element={<MinhaFrotaPage />} />
+          <Route path="operacoes" element={<SolicitacoesPage />} />
+          <Route path="talentos" element={<GestaoDeTalentosPage />} />
+          <Route path="historico" element={<HistoricoPage />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Route>
       </Routes>
     </Router>
   );

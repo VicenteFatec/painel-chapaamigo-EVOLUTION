@@ -1,35 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig'; // Nosso acesso ao Firestore
-import QRCode from 'react-qr-code'; // Biblioteca para gerar o QR Code
-import './TicketPage.css'; // Nosso novo arquivo de estilo
+import { db } from '../firebaseConfig';
+import QRCode from 'react-qr-code';
+import './TicketPage.css';
+import { Loader2, AlertTriangle } from 'lucide-react';
 
 function TicketPage() {
-  const { osId } = useParams(); // Pega o ID da OS da URL (ex: /ticket/OS-5UFIIM)
-  const [ticketData, setTicketData] = useState(null);
+  const { osId } = useParams();
+  const [osData, setOsData] = useState(null);
+  const [chapaData, setChapaData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchTicketData = async () => {
       if (!osId) {
-        setError('ID do Ticket não fornecido.');
+        setError('ID do Ticket não fornecido na URL.');
         setLoading(false);
         return;
       }
       try {
-        const ticketDocRef = doc(db, 'solicitacoes', osId);
-        const ticketDoc = await getDoc(ticketDocRef);
+        const osDocRef = doc(db, 'solicitacoes', osId);
+        const osDoc = await getDoc(osDocRef);
 
-        if (ticketDoc.exists()) {
-          setTicketData(ticketDoc.data());
-        } else {
-          setError('Ticket de Serviço não encontrado.');
+        if (!osDoc.exists()) {
+          setError('Ticket de Serviço não encontrado. Verifique o ID.');
+          setLoading(false);
+          return;
         }
+        
+        const data = osDoc.data();
+        setOsData(data);
+
+        if (data.chapaAlocadoId) {
+          const chapaDocRef = doc(db, 'chapas_b2b', data.chapaAlocadoId);
+          const chapaDoc = await getDoc(chapaDocRef);
+
+          if (chapaDoc.exists()) {
+            setChapaData(chapaDoc.data());
+          } else {
+            setChapaData({ nome: data.chapaAlocadoNome || 'Nome não encontrado' });
+          }
+        } else {
+            setError('Nenhum trabalhador foi alocado para este serviço ainda.');
+        }
+
       } catch (err) {
-        console.error("Erro ao buscar ticket:", err);
-        setError('Ocorreu um erro ao carregar os dados do ticket.');
+        console.error("Erro detalhado ao buscar ticket:", err);
+        setError('Ocorreu um erro inesperado ao carregar os dados do ticket.');
       } finally {
         setLoading(false);
       }
@@ -39,18 +58,38 @@ function TicketPage() {
   }, [osId]);
 
   if (loading) {
-    return <div className="ticket-page-container"><p>Carregando Ticket...</p></div>;
+    return (
+      <div className="ticket-page-container" style={{ textAlign: 'center' }}>
+        <Loader2 className="animate-spin" size={48} color="#2c3e50" />
+        <p style={{ marginTop: '1rem', color: '#2c3e50', fontWeight: 500 }}>Carregando Ticket...</p>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="ticket-page-container"><p className="error-message">{error}</p></div>;
+    return (
+      <div className="ticket-page-container" style={{ textAlign: 'center' }}>
+        <AlertTriangle size={48} color="#d32f2f" />
+        <p className="error-message" style={{ marginTop: '1rem' }}>{error}</p>
+      </div>
+    );
   }
-  
-  // Formata o endereço para exibição
+
   const formatarEndereco = (endereco) => {
     if (!endereco) return "Não informado";
     return `${endereco.logradouro || ''}, ${endereco.numero || ''} - ${endereco.bairro || ''}, ${endereco.cidade || ''} / ${endereco.estado || ''}`;
-  }
+  };
+
+  const formatarData = (timestamp) => {
+    if (!timestamp || !timestamp.toDate) return 'Data não informada';
+    return timestamp.toDate().toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   return (
     <div className="ticket-page-container">
@@ -62,36 +101,40 @@ function TicketPage() {
 
         <section className="ticket-section">
           <p className="ticket-label">SOLICITADO POR</p>
-          <p className="ticket-value-large">{ticketData?.cliente}</p>
-        </section>
-
-        <section className="ticket-section worker-section">
-            <div className='worker-info'>
-                <p className="ticket-label">TRABALHADOR</p>
-                <p className="ticket-value-large">{ticketData?.chapa?.nome}</p>
-                <p className="ticket-value-small">
-                    CPF: {ticketData?.chapa?.cpf || 'Não informado'} | RG: {ticketData?.chapa?.rg || 'Não informado'}
-                </p>
-            </div>
+          <p className="ticket-value-large">{osData?.cliente}</p>
         </section>
 
         <section className="ticket-section">
-            <p className="ticket-label">DETALHES DA OPERAÇÃO</p>
+            <div>
+                <p className="ticket-label">TRABALHADOR ALOCADO</p>
+                <p className="ticket-value-large">{chapaData?.nome}</p>
+                <p className="ticket-value-small">
+                    CPF: {chapaData?.cpf || 'Não informado'}
+                </p>
+            </div>
+        </section>
+        
+        <section className="ticket-section">
+            <p className="ticket-label">DATA E HORA DO SERVIÇO</p>
+            <p className="ticket-value">{formatarData(osData?.dataSolicitacao)}</p>
+        </section>
+
+        <section className="ticket-section">
             <div className='details-grid'>
                 <p className="ticket-label-small">LOCAL DE APRESENTAÇÃO</p>
-                <p className="ticket-value">{formatarEndereco(ticketData?.endereco)}</p>
+                <p className="ticket-value">{formatarEndereco(osData?.endereco)}</p>
                 
                 <p className="ticket-label-small">DESCRIÇÃO DO SERVIÇO</p>
-                <p className="ticket-value">{ticketData?.descricaoServico}</p>
+                <p className="ticket-value">{osData?.descricaoServico}</p>
                 
-                <p className="ticket-label-small">REQUISITOS E EQUIPAMENTOS (EPIS)</p>
-                <p className="ticket-value">{ticketData?.requisitos || 'Nenhum requisito específico'}</p>
+                <p className="ticket-label-small">REQUISITOS E ADVERTÊNCIAS</p>
+                <p className="ticket-value">{osData?.requisitos || 'Nenhum requisito específico'}</p>
             </div>
         </section>
 
         <footer className="ticket-footer">
             <div className="qr-code-container">
-               <QRCode value={window.location.href} size={80} />
+               <QRCode value={window.location.href} size={80} bgColor="#FFFFFF" fgColor="#000000" />
             </div>
             <div className="footer-text">
                 <p>Operação gerenciada pela</p>
