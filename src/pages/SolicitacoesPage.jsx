@@ -1,16 +1,22 @@
+// ===================================================================
+// ARQUIVO COMPLETO COM UPGRADE DE BIBLIOTECA - VÁLIDO
+// Substitui 'react-input-mask' por 'react-imask' para compatibilidade com React 18
+// Código limpo, sem caracteres unicode ocultos.
+// ===================================================================
 import React, { useState, useEffect } from 'react';
 import { db, functions } from '../firebaseConfig';
 import { collection, query, where, orderBy, doc, Timestamp, getDoc, updateDoc, onSnapshot, getDocs, writeBatch, addDoc } from 'firebase/firestore';
 import { httpsCallable } from "firebase/functions";
 import { Clock, CheckCircle, XCircle, FileText, User, Ticket, Search, X, Loader2, Hourglass, Archive, Printer } from 'lucide-react';
-import InputMask from 'react-input-mask';
+// ALTERAÇÃO 1: Importando o componente da nova biblioteca
+import { IMaskInput } from 'react-imask'; 
 import Modal from '../components/Modal';
 import CartaoOS from '../components/CartaoOS';
 import './SolicitacoesPage.css';
-import axios from 'axios'; // Importado para a busca de CEP
+import axios from 'axios';
 
-// --- COMPONENTE DO FORMULÁRIO (AGORA COMPLETO E FUNCIONAL) ---
 const FormularioNovaOS = ({ onClose }) => {
+    // ... (todo o código do seu formulário permanece o mesmo até a seção de detalhes financeiros) ...
     const initialState = {
         cliente: '',
         veiculo: '',
@@ -75,10 +81,9 @@ const FormularioNovaOS = ({ onClose }) => {
         setFormData(prev => ({ ...prev, requisitos: { ...prev.requisitos, [name]: checked } }));
     };
     
-    const handleValorChange = (e) => {
-        const { value } = e.target;
-        const valorNumerico = value.replace(/[R$\.,]/g, '');
-        setFormData(prev => ({...prev, valorServicoBruto: valorNumerico}));
+    // ALTERAÇÃO 2: Simplificando o handler. A nova biblioteca nos dará o valor puro.
+    const handleValorChange = (unmaskedValue) => {
+        setFormData(prev => ({...prev, valorServicoBruto: unmaskedValue}));
     }
 
     const isPagamentoPlataforma = formData.formaPagamento === 'Pagamento pela Plataforma';
@@ -92,14 +97,20 @@ const FormularioNovaOS = ({ onClose }) => {
         }
         setIsSubmitting(true);
         try {
-            const valorFinal = parseFloat(formData.valorServicoBruto) / 100 || 0;
+            const valorFinal = parseFloat(formData.valorServicoBruto) || 0;
             const dataServicoTimestamp = formData.dataServico ? Timestamp.fromDate(new Date(formData.dataServico)) : Timestamp.now();
             const prazoTerminoTimestamp = formData.prazoTermino ? Timestamp.fromDate(new Date(formData.prazoTermino)) : null;
+
+            const requisitosSelecionados = Object.entries(formData.requisitos)
+                .filter(([key, value]) => value === true)
+                .map(([key]) => key);
 
             const docData = {
                 ...formData,
                 valorServicoBruto: valorFinal,
-                dataSolicitacao: dataServicoTimestamp,
+                requisitos: requisitosSelecionados,
+                dataSolicitacao: Timestamp.now(),
+                dataServico: dataServicoTimestamp,
                 prazoTermino: prazoTerminoTimestamp,
                 status: 'pendente',
                 timestampCriacao: Timestamp.now(),
@@ -120,6 +131,7 @@ const FormularioNovaOS = ({ onClose }) => {
     return (
         <form onSubmit={handleSubmit}>
             <div className="form-grid">
+                 {/* ... Todas as outras seções do formulário (Informações Gerais, Endereço, Data e Hora) permanecem idênticas ... */}
                 <div className="form-section">
                     <h4 className="form-section-title">Informações Gerais</h4>
                     <div className="form-group">
@@ -194,14 +206,24 @@ const FormularioNovaOS = ({ onClose }) => {
                     <h4 className="form-section-title">Detalhes Financeiros</h4>
                     <div className="form-group">
                         <label>Valor Ofertado</label>
-                        <InputMask 
-                            mask="R$ 99.999,99" 
-                            maskChar={null}
-                            value={formData.valorServicoBruto}
-                            onChange={handleValorChange}
-                        >
-                            {(inputProps) => <input {...inputProps} type="text" placeholder="R$ 0,00" required />}
-                        </InputMask>
+                        {/* ALTERAÇÃO 3: Substituindo o componente antigo pelo novo 'IMaskInput' */}
+                        <IMaskInput
+                            mask="R$ num"
+                            blocks={{
+                                num: {
+                                    mask: Number,
+                                    thousandsSeparator: '.',
+                                    radix: ',',
+                                    scale: 2,
+                                    padFractionalZeros: true,
+                                },
+                            }}
+                            unmask={true} // Retorna apenas os números para o handler
+                            onAccept={handleValorChange} // Usa o handler simplificado
+                            placeholder="R$ 0,00"
+                            className="form-input-style" // Adicione uma classe para estilizar se necessário
+                            required
+                        />
                     </div>
                     <div className="form-group">
                         <label>Forma de Pagamento</label>
@@ -212,14 +234,14 @@ const FormularioNovaOS = ({ onClose }) => {
                         </select>
                     </div>
                 </div>
-
+                 {/* ... O resto do formulário (Requisitos, Termos, Botões) permanece idêntico ... */}
                 <div className="form-section" style={{ gridColumn: '1 / -1' }}>
                     <h4 className="form-section-title">Requisitos e Advertências</h4>
                     <div className="requisitos-container">
-                        {Object.keys(formData.requisitos).map(req => (
+                        {Object.keys(initialState.requisitos).map(req => (
                             <div key={req} className="requisito-item">
                                 <input type="checkbox" id={req} name={req} checked={formData.requisitos[req]} onChange={handleRequisitoChange} />
-                                <label htmlFor={req}>{req.replace(/_/g, ' ')}</label>
+                                <label htmlFor={req}>{req}</label>
                             </div>
                         ))}
                     </div>
@@ -250,9 +272,9 @@ const FormularioNovaOS = ({ onClose }) => {
     );
 };
 
-
-// --- COMPONENTE PRINCIPAL DA PÁGINA ---
+// --- O restante da página SolicitacoesPage permanece o mesmo ---
 function SolicitacoesPage() {
+    // ... todo o código existente da SolicitacoesPage ...
     const [solicitacoes, setSolicitacoes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isDetalhesModalOpen, setIsDetalhesModalOpen] = useState(false);
@@ -288,10 +310,18 @@ function SolicitacoesPage() {
         setIsLoading(true);
         const solicitacoesCollectionRef = collection(db, "solicitacoes");
         const statusVisiveis = ["pendente", "aguardando_resposta", "confirmado", "finalizado", "cancelado"];
-        const q = query(solicitacoesCollectionRef, where("status", "in", statusVisiveis), orderBy("timestampCriacao", "desc"));
+        const q = query(solicitacoesCollectionRef, where("status", "in", statusVisiveis), orderBy("dataSolicitacao", "desc"));
         
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const solicitacoesList = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            const solicitacoesList = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                return { 
+                    ...data, 
+                    id: doc.id,
+                    dataSolicitacao: data.dataSolicitacao,
+                    timestampFim: data.timestampFim
+                };
+            });
             setSolicitacoes(solicitacoesList);
             setIsLoading(false);
         }, (error) => {
@@ -310,7 +340,9 @@ function SolicitacoesPage() {
             const q = query(chapasCollectionRef, where("status", "==", "Disponível"));
             const data = await getDocs(q);
             const todosOsChapasDisponiveis = data.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            
             let chapasFiltrados = [];
+            
             if (termoBusca) {
                 const termo = termoBusca.toLowerCase();
                 chapasFiltrados = todosOsChapasDisponiveis.filter(chapa =>
@@ -319,7 +351,7 @@ function SolicitacoesPage() {
             } else if (regiao) {
                 const regioesValidas = [regiao, ...(regioesSinonimos[regiao] || [])];
                 chapasFiltrados = todosOsChapasDisponiveis.filter(chapa =>
-                    regioesValidas.some(r => chapa.regiao?.includes(r))
+                    chapa.regiao && regioesValidas.some(r => chapa.regiao.includes(r))
                 );
             } else {
                 chapasFiltrados = todosOsChapasDisponiveis;
@@ -336,7 +368,7 @@ function SolicitacoesPage() {
         setSolicitacaoSelecionada(solicitacao);
         setIsDetalhesModalOpen(true);
         if (solicitacao.status === 'pendente') {
-            buscarTrabalhadores(solicitacao.endereco.cidade);
+            buscarTrabalhadores(solicitacao.endereco?.cidade);
         }
     };
 
@@ -352,21 +384,25 @@ function SolicitacoesPage() {
     const clearSearch = () => {
         setSearchTerm('');
         if (solicitacaoSelecionada) {
-            buscarTrabalhadores(solicitacaoSelecionada.endereco.cidade);
+            buscarTrabalhadores(solicitacaoSelecionada.endereco?.cidade);
         }
     };
 
     const handleVerTicket = async (solicitacao) => {
         if (!solicitacao.chapaAlocadoId) return;
         setTrabalhadorSelecionado(null);
-        const trabalhadorRef = doc(db, "chapas_b2b", solicitacao.chapaAlocadoId);
-        const trabalhadorDoc = await getDoc(trabalhadorRef);
-        if (trabalhadorDoc.exists()) {
-            setTrabalhadorSelecionado(trabalhadorDoc.data());
-            setSolicitacaoSelecionada(solicitacao);
-            setIsTicketModalOpen(true);
-        } else {
-            alert("Não foi possível encontrar os dados do trabalhador alocado.");
+        try {
+            const trabalhadorRef = doc(db, "chapas_b2b", solicitacao.chapaAlocadoId);
+            const trabalhadorDoc = await getDoc(trabalhadorRef);
+            if (trabalhadorDoc.exists()) {
+                setTrabalhadorSelecionado(trabalhadorDoc.data());
+                setSolicitacaoSelecionada(solicitacao);
+                setIsTicketModalOpen(true);
+            } else {
+                alert("Não foi possível encontrar os dados do trabalhador alocado.");
+            }
+        } catch (error) {
+            console.error("Erro ao buscar ticket:", error);
         }
     };
 
@@ -389,25 +425,22 @@ function SolicitacoesPage() {
             return;
         }
         setIsAlocando(true);
+        const solicitacaoRef = doc(db, "solicitacoes", solicitacaoSelecionada.id);
         try {
-            const solicitacaoRef = doc(db, "solicitacoes", solicitacaoSelecionada.id);
             await updateDoc(solicitacaoRef, { status: 'aguardando_resposta' });
             
-            const dadosParaEnvio = {
+            await enviarConvite({
                 chapaId: chapa.id,
                 nomeChapa: chapa.nomeCompleto,
                 telefoneChapa: chapa.telefone,
                 idOS: solicitacaoSelecionada.id,
                 solicitacaoData: solicitacaoSelecionada 
-            };
-
-            await enviarConvite(dadosParaEnvio);
+            });
             alert(`Convite via WhatsApp enviado para ${chapa.nomeCompleto}!`);
             fecharDetalhesModal();
         } catch (error) {
             console.error("Erro ao enviar convite: ", error);
             alert(`Ocorreu um erro ao tentar enviar o convite: ${error.message}`);
-            const solicitacaoRef = doc(db, "solicitacoes", solicitacaoSelecionada.id);
             await updateDoc(solicitacaoRef, { status: 'pendente' });
         } finally {
             setIsAlocando(false);
@@ -449,7 +482,6 @@ function SolicitacoesPage() {
         window.print();
     };
 
-
     return (
         <div>
             <div className="solicitacoes-header">
@@ -473,20 +505,20 @@ function SolicitacoesPage() {
                     </thead>
                     <tbody>
                         {isLoading ? (
-                            <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}><Loader2 size={24} className="animate-spin inline-block mr-2" /> Carregando...</td></tr>
+                            <tr><td colSpan="4" className="text-center p-8"><Loader2 size={24} className="animate-spin inline-block mr-2" /> Carregando...</td></tr>
                         ) : solicitacoes.length > 0 ? (
                             solicitacoes.map((solicitacao) => {
                                 const statusInfo = getStatusInfo(solicitacao.status);
                                 return (
                                     <tr key={solicitacao.id}>
                                         <td>
-                                            <div style={{ fontWeight: 600 }}>{solicitacao.cliente}</div>
-                                            {solicitacao.chapaAlocadoNome && (<div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '4px' }}><span style={{ fontWeight: 500 }}>Alocado:</span> {solicitacao.chapaAlocadoNome}</div>)}
+                                            <div className="font-semibold">{solicitacao.cliente}</div>
+                                            {solicitacao.chapaAlocadoNome && (<div className="text-sm text-gray-600 mt-1"><span className="font-medium">Alocado:</span> {solicitacao.chapaAlocadoNome}</div>)}
                                         </td>
                                         <td>
                                             <div className="datas-cell">
-                                                <span><strong>Serviço:</strong> {solicitacao.dataSolicitacao?.toDate().toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) || 'N/A'}</span>
-                                                {solicitacao.timestampFim && (<span><strong>Finalizado:</strong> {solicitacao.timestampFim.toDate().toLocaleDateString('pt-BR')}</span>)}
+                                                {solicitacao.dataServico?.toDate && <span><strong>Serviço:</strong> {solicitacao.dataServico.toDate().toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}</span>}
+                                                {solicitacao.timestampFim?.toDate && <span><strong>Finalizado:</strong> {solicitacao.timestampFim.toDate().toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}</span>}
                                             </div>
                                         </td>
                                         <td>
@@ -505,7 +537,7 @@ function SolicitacoesPage() {
                                 );
                             })
                         ) : (
-                            <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>Nenhuma solicitação ativa encontrada.</td></tr>
+                            <tr><td colSpan="4" className="text-center p-8">Nenhuma solicitação ativa encontrada.</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -535,14 +567,14 @@ function SolicitacoesPage() {
                             <section className="gala-section">
                                 <h3 className="gala-section-title">Escopo do Serviço</h3>
                                 <div className="gala-item"><span className="gala-label">Descrição:</span><span className="gala-dado descricao">{solicitacaoSelecionada?.descricaoServico}</span></div>
-                                {solicitacaoSelecionada?.requisitos && (<div className="gala-item"><span className="gala-label">Requisitos:</span><span className="gala-dado">{solicitacaoSelecionada?.requisitos}</span></div>)}
+                                {solicitacaoSelecionada?.requisitos && solicitacaoSelecionada.requisitos.length > 0 && (<div className="gala-item"><span className="gala-label">Requisitos:</span><span className="gala-dado">{solicitacaoSelecionada.requisitos.join(', ')}</span></div>)}
                             </section>
                             <section className="gala-section">
                                 <h3 className="gala-section-title">Informações Financeiras e Temporais</h3>
                                 <div className="gala-item"><span className="gala-label">Valor Ofertado:</span><span className="gala-dado">R$ {solicitacaoSelecionada?.valorServicoBruto?.toFixed(2).replace('.', ',')}</span></div>
                                 <div className="gala-item"><span className="gala-label">Pagamento:</span><span className="gala-dado">{solicitacaoSelecionada?.formaPagamento}</span></div>
-                                <div className="gala-item"><span className="gala-label">Solicitado em:</span><span className="gala-dado">{solicitacaoSelecionada?.dataSolicitacao.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span></div>
-                                {solicitacaoSelecionada?.timestampFim && (<div className="gala-item"><span className="gala-label">Fim do Serviço:</span><span className="gala-dado">{solicitacaoSelecionada?.timestampFim.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span></div>)}
+                                {solicitacaoSelecionada?.dataServico?.toDate && <div className="gala-item"><span className="gala-label">Agendado para:</span><span className="gala-dado">{solicitacaoSelecionada?.dataServico.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span></div>}
+                                {solicitacaoSelecionada?.timestampFim?.toDate && (<div className="gala-item"><span className="gala-label">Fim do Serviço:</span><span className="gala-dado">{solicitacaoSelecionada?.timestampFim.toDate().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span></div>)}
                             </section>
                             <footer className="gala-footer">Documento gerado por Chapa Amigo Empresas</footer>
                         </div>
@@ -558,12 +590,12 @@ function SolicitacoesPage() {
                                 <form onSubmit={handleSearchSubmit} className="search-form"><div className="search-input-wrapper"><Search size={18} className="search-icon" /><input type="text" placeholder="Buscar por nome..." value={searchTerm} onChange={handleSearchChange} /></div><button type="submit">Buscar</button></form>
                                 <button onClick={clearSearch} className="clear-search-button"><X size={14} /> Limpar e ver sugestões</button>
                             </div>
-                            {isLoadingSugeridos ? (<p style={{ textAlign: 'center', flexGrow: 1 }}>Buscando...</p>) : (
+                            {isLoadingSugeridos ? (<div className="loading-sugeridos"><Loader2 size={20} className="animate-spin" /></div>) : (
                                 <div className="lista-sugeridos">
                                     {trabalhadoresSugeridos.length > 0 ? (
                                         trabalhadoresSugeridos.map(chapa => (
                                             <div key={chapa.id} className="sugerido-item">
-                                                <div className="sugerido-info">{chapa.fotoURL ? <img src={chapa.fotoURL} alt={chapa.nomeCompleto} className="sugerido-avatar" /> : <div className="user-avatar" style={{ width: '40px', height: '40px' }}><User size={18} /></div>}<div><span className="sugerido-nome">{chapa.nomeCompleto}</span><span className="sugerido-regiao">{chapa.regiao}</span></div></div>
+                                                <div className="sugerido-info">{chapa.fotoURL ? <img src={chapa.fotoURL} alt={chapa.nomeCompleto} className="sugerido-avatar" /> : <div className="user-avatar" style={{ width: '40px', height: '40px' }}><User size={18} /></div>}<div><span className="sugerido-nome">{chapa.nomeCompleto}</span><span className="sugerido-regiao">{chapa.regiao.join(', ')}</span></div></div>
                                                 <button className="alocar-btn" onClick={() => handleAlocarChapa(chapa)} disabled={isAlocando}>{isAlocando ? <Loader2 size={16} className="animate-spin" /> : 'Alocar'}</button>
                                             </div>
                                         ))

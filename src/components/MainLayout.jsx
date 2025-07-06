@@ -166,7 +166,7 @@ function MainLayout() {
             <main className="content">
                 <header className="content-header">
                     <h2 className="page-title">{getPageTitle(location.pathname)}</h2>
-                    <button className="new-os-button" onClick={handleNewOrderClick}><PlusCircle size={20} /><span>Nova Ordem de Serviço</span></button>
+                    
                 </header>
                 <div className="page-content">
                     <Outlet />
