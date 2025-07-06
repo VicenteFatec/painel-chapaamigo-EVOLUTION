@@ -1,3 +1,9 @@
+// ===================================================================
+// ARQUIVO ATUALIZADO: src/App.jsx
+// Este arquivo agora é a única fonte de verdade para o roteamento.
+// Todas as rotas, incluindo /lojas, estão declaradas aqui.
+// ===================================================================
+
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
@@ -14,6 +20,7 @@ import SolicitacoesPage from './pages/SolicitacoesPage';
 import GestaoDeTalentosPage from './pages/GestaoDeTalentosPage';
 import HistoricoPage from './pages/HistoricoPage';
 import TicketPage from './pages/TicketPage';
+import GestaoDeLojasPage from './pages/GestaoDeLojasPage'; // Importação da nova página
 import { Loader2 } from 'lucide-react';
 
 // Componente auxiliar para proteger rotas
@@ -47,15 +54,11 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* ================================================================== */}
-        {/* ROTAS PÚBLICAS - Acessíveis por qualquer pessoa, a qualquer momento */}
-        {/* ================================================================== */}
+        {/* ROTAS PÚBLICAS */}
         <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <LoginPage />} />
         <Route path="/ticket/:osId" element={<TicketPage />} />
 
-        {/* ================================================================== */}
-        {/* ROTAS PROTEGIDAS - Envelopadas pelo MainLayout e ProtectedRoute    */}
-        {/* ================================================================== */}
+        {/* ROTAS PROTEGIDAS */}
         <Route
           path="/"
           element={
@@ -70,6 +73,9 @@ function App() {
           <Route path="operacoes" element={<SolicitacoesPage />} />
           <Route path="talentos" element={<GestaoDeTalentosPage />} />
           <Route path="historico" element={<HistoricoPage />} />
+          {/* ROTA PARA LOJAS CORRETAMENTE ADICIONADA */}
+          <Route path="lojas" element={<GestaoDeLojasPage />} />
+          {/* Rota de fallback para qualquer endereço não encontrado */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>

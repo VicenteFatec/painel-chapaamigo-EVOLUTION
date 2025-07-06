@@ -1,5 +1,7 @@
 // ===================================================================
-// ARQUIVO FINAL CORRIGIDO E MODERNIZADO - Válido para 05/07/2025
+// ARQUIVO FINAL CORRIGIDO E MODERNIZADO - Válido para 06/07/2025
+// Ambas as funções de envio da Twilio (convite e confirmação)
+// agora usam o sistema de Templates do WhatsApp.
 // ===================================================================
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
@@ -19,10 +21,13 @@ const twilioAccountSid = defineString("TWILIO_ACCOUNTSID");
 const twilioAuthToken = defineString("TWILIO_AUTHTOKEN");
 const twilioPhoneNumber = defineString("TWILIO_PHONE_NUMBER");
 const googleMapsApiKey = defineString("MAPS_API_KEY");
+// PARÂMETROS PARA OS TEMPLATES
+const twilioTemplateSid = defineString("TWILIO_TEMPLATE_SID");
+const twilioConfirmationTemplateSid = defineString("TWILIO_CONFIRMATION_TEMPLATE_SID"); // NOVO
 
 
 // ===================================================================
-// FUNÇÃO DE EXIBIÇÃO DE CONVITE (ATUALIZADA PARA O FORMULÁRIO V2.0)
+// FUNÇÃO DE EXIBIÇÃO DE CONVITE
 // ===================================================================
 exports.exibirDetalhesOS = onRequest({ cors: true }, async (req, res) => {
     logger.info("Acessando página de detalhes da OS", { query: req.query });
@@ -42,7 +47,6 @@ exports.exibirDetalhesOS = onRequest({ cors: true }, async (req, res) => {
 
         const osData = osDoc.data();
         const dataSolicitacao = osData.dataSolicitacao.toDate();
-        // Aumentando o tempo de expiração para 1 hora para dar mais tempo ao chapa
         const dataExpiracao = new Date(dataSolicitacao.getTime() + 60 * 60000);
         const agora = new Date();
 
@@ -68,10 +72,9 @@ exports.exibirDetalhesOS = onRequest({ cors: true }, async (req, res) => {
         const horarioFormatado = osData.periodoInicio === 'Outro' ? osData.outroHorario : osData.periodoInicio;
 
         let requisitosHtml = '';
-        if (osData.requisitos && Object.keys(osData.requisitos).length > 0) {
-            const listaRequisitos = Object.entries(osData.requisitos)
-                .filter(([key, value]) => value === true)
-                .map(([key, value]) => `<li>${key.replace(/_/g, ' ')}</li>`)
+        if (osData.requisitos && osData.requisitos.length > 0) {
+            const listaRequisitos = osData.requisitos
+                .map(req => `<li>${req.replace(/_/g, ' ')}</li>`)
                 .join('');
 
             if (listaRequisitos) {
@@ -129,8 +132,9 @@ exports.exibirDetalhesOS = onRequest({ cors: true }, async (req, res) => {
     }
 });
 
+
 // ===================================================================
-// FUNÇÃO DE RECEBIMENTO DE RESPOSTA (CÓDIGO RESTAURADO)
+// FUNÇÃO DE RECEBIMENTO DE RESPOSTA (ATUALIZADA)
 // ===================================================================
 exports.receberRespostaChapa = onRequest(async (req, res) => {
     const { From, Body } = req.body;
@@ -198,18 +202,21 @@ exports.receberRespostaChapa = onRequest(async (req, res) => {
                     
                     logger.info(`Chapa ${conviteData.chapaId} ACEITOU o convite ${conviteDoc.id}.`);
 
+                    // --- ALTERAÇÃO PRINCIPAL ---
+                    // A mensagem de confirmação agora usa o template de confirmação.
                     const twilioClient = new twilio(twilioAccountSid.value(), twilioAuthToken.value());
-                    
                     const baseUrl = 'https://chapa-amigo-empresas.web.app';
                     const ticketUrl = `${baseUrl}/ticket/${osId}`;
-                    const mensagemTicket = `Parabéns, seu trabalho está confirmado! 👷✅\n\nBaixe seu ticket de serviço e siga as orientações:\n${ticketUrl}`;
                     
                     await twilioClient.messages.create({
+                        contentSid: twilioConfirmationTemplateSid.value(), // Usa o novo SID
                         from: `whatsapp:${twilioPhoneNumber.value()}`,
                         to: telefoneRemetente,
-                        body: mensagemTicket,
+                        contentVariables: JSON.stringify({
+                            1: ticketUrl, // Passa o link do ticket para a variável {{1}}
+                        }),
                     });
-                    logger.info(`Mensagem com link do ticket enviada para ${telefoneRemetente} para a OS ${osId}`);
+                    logger.info(`Mensagem de confirmação com template enviada para ${telefoneRemetente} para a OS ${osId}`);
 
                 } else if (acao === "RECUSAR") {
                     const osRef = db.collection("solicitacoes").doc(osId);
@@ -231,7 +238,7 @@ exports.receberRespostaChapa = onRequest(async (req, res) => {
 
 
 // ===================================================================
-// FUNÇÃO DE ENVIO DE CONVITE (ATUALIZADA PARA O FORMULÁRIO V2.0)
+// FUNÇÃO DE ENVIO DE CONVITE (ATUALIZADA PARA USAR TEMPLATE)
 // ===================================================================
 exports.enviarConviteOS = onCall({ cors: [/localhost:\d+$/, "https://chapa-amigo-empresas.web.app"] }, async (request) => {
     if (!request.auth) {
@@ -266,15 +273,18 @@ exports.enviarConviteOS = onCall({ cors: [/localhost:\d+$/, "https://chapa-amigo
         const functionRegion = "us-central1";
         const linkPublico = `https://${functionRegion}-${projectId}.cloudfunctions.net/exibirDetalhesOS?id=${idOS}`;
         
-        const mensagem = `Chapa Amigo: Olá ${nomeChapa}, a ${solicitacaoData.cliente} tem um novo convite de serviço para você. Veja todos os detalhes e responda no link: ${linkPublico}`;
-
         await client.messages.create({
-            body: mensagem,
+            contentSid: twilioTemplateSid.value(),
             from: `whatsapp:${twilioPhoneNumber.value()}`,
-            to:   `whatsapp:${numeroFormatado}`
+            to:   `whatsapp:${numeroFormatado}`,
+            contentVariables: JSON.stringify({
+                1: nomeChapa,
+                2: solicitacaoData.cliente,
+                3: linkPublico,
+            }),
         });
 
-        logger.info(`Mensagem WhatsApp enviada para ${numeroFormatado}!`);
+        logger.info(`Mensagem de template enviada para ${numeroFormatado}!`);
         return { success: true, conviteId: conviteRef.id };
 
     } catch (error) {
@@ -285,7 +295,7 @@ exports.enviarConviteOS = onCall({ cors: [/localhost:\d+$/, "https://chapa-amigo
 
 
 // ===================================================================
-// FUNÇÃO DE GEOCODIFICAÇÃO (CÓDIGO RESTAURADO)
+// FUNÇÃO DE GEOCODIFICAÇÃO
 // ===================================================================
 exports.geocodeAddressOnCreate = onDocumentCreated("solicitacoes/{solicitacaoId}", async (event) => {
     const snapshot = event.data;
