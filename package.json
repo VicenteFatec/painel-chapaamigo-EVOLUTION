@@ -13,6 +13,7 @@
     "axios": "^1.10.0",
     "browser-image-compression": "^2.0.2",
     "firebase": "^11.9.1",
+    "firebase-functions": "^6.3.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.523.0",
     "papaparse": "^5.5.3",

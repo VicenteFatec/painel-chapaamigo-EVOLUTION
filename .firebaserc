@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "chapa-amigo-empresas"
+    "default": "chapa-amigo-empresas",
+    "teste": "chapa-amigo-teste-deploy"
   },
   "targets": {},
   "etags": {}
