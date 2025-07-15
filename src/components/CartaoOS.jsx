@@ -1,7 +1,7 @@
 import React from 'react';
 import './CartaoOS.css';
 import { User, Hash, Briefcase, Info, AlertTriangle, Building2 } from 'lucide-react';
-import * as QRCode from 'qrcode.react'; 
+import * as QRCode from 'qrcode.react';
 
 const formatarDocumento = (doc, tipo) => {
     if (!doc) return 'N/A';
@@ -15,19 +15,20 @@ const formatarDocumento = (doc, tipo) => {
 };
 
 function CartaoOS({ solicitacao, trabalhador }) {
-    if (!solicitacao || !trabalhador) {
+    if (!solicitacao) {
         return <div className="cartao-os-loading">Carregando dados do Ticket...</div>;
     }
 
     const qrCodeValue = `https://verificar.chapaamigo.com.br/servico/${solicitacao.id}`;
     const QRCodeComponent = QRCode.QRCodeSVG;
-
-    // Lógica para criar o número de OS dinâmico a partir do ID da solicitação
     const numeroOSDinamico = `OS-${solicitacao.id.slice(-6).toUpperCase()}`;
 
     if (!QRCodeComponent) {
         return <div>Erro ao carregar o componente de QR Code.</div>;
     }
+
+    const nomeTrabalhador = trabalhador?.nomeCompleto || solicitacao.chapaAlocadoNome || 'Trabalhador não informado';
+    const fotoTrabalhador = trabalhador?.fotoURL;
 
     return (
         <div id="cartao-os-para-exportar" className="cartao-os-container">
@@ -35,16 +36,12 @@ function CartaoOS({ solicitacao, trabalhador }) {
                 <h2>TICKET DE SERVIÇO</h2>
                 <div className="cartao-os-os">
                     <Hash size={16} />
-                    {/* ===== MODIFICAÇÃO AQUI ===== */}
                     <span>{numeroOSDinamico}</span>
-                    {/* ============================ */}
                 </div>
             </header>
 
             <section className="cartao-os-secao-solicitante">
-                <div className="solicitante-icone">
-                    <Building2 size={40} />
-                </div>
+                <div className="solicitante-icone"><Building2 size={40} /></div>
                 <div className="solicitante-info">
                     <span className="solicitante-label">SOLICITADO POR</span>
                     <h3 className="solicitante-nome">{solicitacao?.cliente || 'Cliente não informado'}</h3>
@@ -53,19 +50,21 @@ function CartaoOS({ solicitacao, trabalhador }) {
 
             <section className="cartao-os-secao-trabalhador">
                 <div className="trabalhador-avatar">
-                    {trabalhador?.fotoURL ? (
-                        <img src={trabalhador.fotoURL} alt={trabalhador.nomeCompleto} />
+                    {fotoTrabalhador ? (
+                        <img src={fotoTrabalhador} alt={nomeTrabalhador} />
                     ) : (
                         <User size={60} />
                     )}
                 </div>
                 <div className="trabalhador-info">
                     <span className="trabalhador-label">Trabalhador</span>
-                    <h3 className="trabalhador-nome">{trabalhador?.nomeCompleto}</h3>
-                    <div className="trabalhador-docs">
-                        <span><strong>CPF:</strong> {formatarDocumento(trabalhador?.cpf, 'cpf')}</span>
-                        <span><strong>RG:</strong> {formatarDocumento(trabalhador?.rg, 'rg')}</span>
-                    </div>
+                    <h3 className="trabalhador-nome">{nomeTrabalhador}</h3>
+                    {trabalhador && (
+                        <div className="trabalhador-docs">
+                            <span><strong>CPF:</strong> {formatarDocumento(trabalhador.cpf, 'cpf')}</span>
+                            <span><strong>RG:</strong> {formatarDocumento(trabalhador.rg, 'rg')}</span>
+                        </div>
+                    )}
                 </div>
             </section>
 
@@ -73,7 +72,7 @@ function CartaoOS({ solicitacao, trabalhador }) {
                 <h4><Briefcase size={14} /> Detalhes da Operação</h4>
                 <div className="detalhe-item-cartao-os">
                     <span className="detalhe-label">LOCAL DE APRESENTAÇÃO</span>
-                    <p>{solicitacao?.local || 'Não informado'}</p>
+                    <p>{solicitacao?.endereco?.logradouro ? `${solicitacao.endereco.logradouro}, ${solicitacao.endereco.numero} - ${solicitacao.endereco.bairro}` : 'Não informado'}</p>
                 </div>
                 <div className="detalhe-item-cartao-os">
                     <span className="detalhe-label">DESCRIÇÃO DO SERVIÇO</span>
@@ -95,13 +94,13 @@ function CartaoOS({ solicitacao, trabalhador }) {
             
             <footer className="cartao-os-footer">
                 <div className="qr-code-placeholder">
+                    {/* ===== QR CODE OTIMIZADO CONFORME O PLANO ===== */}
                     <QRCodeComponent 
                         value={qrCodeValue} 
-                        size={80} 
+                        size={60} 
                         bgColor={"#ffffff"}
                         fgColor={"#000000"}
-                        level={"H"}
-                        includeMargin={true}
+                        level={"M"}
                     />
                 </div>
                 <div className="plataforma-info">

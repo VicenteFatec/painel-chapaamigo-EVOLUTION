@@ -1,241 +1,228 @@
 // ===================================================================
-// ARQUIVO ATUALIZADO: src/pages/GestaoDeLojasPage.jsx
-// Funcionalidade de ADICIONAR e VISUALIZAR lojas.
-// Adicionada a busca em tempo real e a renderização em tabela.
+// ARQUIVO 100% COMPLETO E CORRIGIDO (v2): src/pages/GestaoDeLojasPage.jsx
+// Corrigido o erro de referência ao ícone 'MapPin'.
 // ===================================================================
 
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebaseConfig';
-// CORREÇÃO: Adicionado onSnapshot, query, orderBy e updateDoc
-import { collection, addDoc, query, orderBy, onSnapshot, updateDoc } from 'firebase/firestore';
-import { PlusCircle, Loader2, Edit, Trash2 } from 'lucide-react';
-import Modal from '../components/Modal';
-import axios from 'axios';
 import './GestaoDeLojasPage.css';
+import { db, auth } from '../firebaseConfig';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, where, updateDoc } from 'firebase/firestore';
+import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
+// ===== CORREÇÃO: Ícone 'MapPin' adicionado à lista de importação =====
+import { PlusCircle, Edit, Trash2, Loader2, Home, User, Mail, Phone, MapPin } from 'lucide-react';
+import axios from 'axios';
 
 const ESTADO_INICIAL_LOJA = {
     nomeUnidade: '',
-    responsavel: '',
-    telefone: '',
-    tipoOperacao: '',
-    endereco: {
-        cep: '', rua: '', numero: '', bairro: '', cidade: '', estado: '',
-    },
+    cnpj: '',
+    endereco: { rua: '', numero: '', bairro: '', cidade: '', estado: '', cep: '' },
+    responsavel: { nome: '', email: '', telefone: '' },
+    ativo: true
 };
 
 function GestaoDeLojasPage() {
+    const [lojasList, setLojasList] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState(ESTADO_INICIAL_LOJA);
-    
-    // NOVOS ESTADOS para listar as lojas
-    const [lojasList, setLojasList] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [lojaEmEdicaoId, setLojaEmEdicaoId] = useState(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [lojaParaExcluir, setLojaParaExcluir] = useState(null);
 
-    // EFEITO PARA BUSCAR AS LOJAS EM TEMPO REAL
     useEffect(() => {
+        if (!auth.currentUser) {
+            setIsLoading(false);
+            return;
+        };
+        
         setIsLoading(true);
         const lojasCollectionRef = collection(db, "lojas");
-        const q = query(lojasCollectionRef, orderBy("nomeUnidade")); // Ordena por nome
-
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const lojas = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+        const q = query(
+            lojasCollectionRef,
+            where("empresaId", "==", auth.currentUser.uid),
+            orderBy("nomeUnidade")
+        );
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const lojas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setLojasList(lojas);
             setIsLoading(false);
         }, (error) => {
             console.error("Erro ao buscar lojas: ", error);
-            alert("Não foi possível carregar a lista de lojas.");
             setIsLoading(false);
         });
-
-        // Limpa o listener ao desmontar o componente
         return () => unsubscribe();
     }, []);
 
+    const handleInputChange = (e, section = null) => {
+        const { name, value } = e.target;
+        if (section) {
+            setFormData(prev => ({
+                ...prev,
+                [section]: { ...prev[section], [name]: value }
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+    };
 
-    const handleOpenModal = () => {
+    const abrirModalParaAdicionar = () => {
         setFormData(ESTADO_INICIAL_LOJA);
+        setLojaEmEdicaoId(null);
         setIsModalOpen(true);
     };
 
-    const handleCloseModal = () => {
+    const abrirModalParaEditar = (loja) => {
+        const dadosParaEdicao = { ...ESTADO_INICIAL_LOJA, ...loja };
+        // Garante que os objetos aninhados não sejam undefined
+        dadosParaEdicao.endereco = { ...ESTADO_INICIAL_LOJA.endereco, ...loja.endereco };
+        dadosParaEdicao.responsavel = { ...ESTADO_INICIAL_LOJA.responsavel, ...loja.responsavel };
+        
+        setFormData(dadosParaEdicao);
+        setLojaEmEdicaoId(loja.id);
+        setIsModalOpen(true);
+    };
+
+    const fecharModal = () => {
         if (isSubmitting) return;
         setIsModalOpen(false);
     };
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+    const abrirModalConfirmacao = (loja) => {
+        setLojaParaExcluir(loja);
+        setIsConfirmModalOpen(true);
     };
 
-    const handleEnderecoChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            endereco: { ...prev.endereco, [name]: value }
-        }));
-    };
-
-    const handleCepChange = async (e) => {
-        const cepValue = e.target.value;
-        handleEnderecoChange(e);
-
-        const cep = cepValue.replace(/\D/g, '');
-        if (cep.length === 8) {
-            try {
-                const { data } = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
-                if (!data.erro) {
-                    setFormData(prev => ({
-                        ...prev,
-                        endereco: {
-                            ...prev.endereco,
-                            rua: data.logradouro,
-                            bairro: data.bairro,
-                            cidade: data.localidade,
-                            estado: data.uf,
-                        }
-                    }));
-                }
-            } catch (error) {
-                console.error("Erro ao buscar CEP:", error);
-                alert("Não foi possível buscar o CEP. Por favor, preencha o endereço manualmente.");
-            }
-        }
-    };
-
-    const handleSubmit = async (e) => {
+    const handleSalvarLoja = async (e) => {
         e.preventDefault();
+        if (!auth.currentUser) {
+            alert("Erro de autenticação. Por favor, faça login novamente.");
+            return;
+        }
         setIsSubmitting(true);
         try {
-            const lojasCollectionRef = collection(db, "lojas");
-            // Salva os dados iniciais
-            const docRef = await addDoc(lojasCollectionRef, formData);
-            
-            // Cria o código curto e atualiza o documento recém-criado
-            const codigoCurto = docRef.id.substring(0, 6).toUpperCase();
-            await updateDoc(docRef, { codigoCurto: codigoCurto });
-
-            alert(`Loja "${formData.nomeUnidade}" criada com sucesso!`);
-            handleCloseModal();
+            if (lojaEmEdicaoId) {
+                const lojaDoc = doc(db, "lojas", lojaEmEdicaoId);
+                await updateDoc(lojaDoc, formData);
+                alert("Loja atualizada com sucesso!");
+            } else {
+                const dadosParaSalvar = {
+                    ...formData,
+                    empresaId: auth.currentUser.uid
+                };
+                await addDoc(collection(db, "lojas"), dadosParaSalvar);
+                alert("Nova loja adicionada com sucesso!");
+            }
+            fecharModal();
         } catch (error) {
-            console.error("Erro ao criar loja: ", error);
-            alert("Falha ao criar a loja. Verifique o console para mais detalhes.");
+            console.error("Erro ao salvar loja: ", error);
+            alert("Ocorreu um erro ao salvar a loja.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    const handleConfirmarExclusao = async () => {
+        if (!lojaParaExcluir) return;
+        try {
+            await deleteDoc(doc(db, "lojas", lojaParaExcluir.id));
+            alert("Loja excluída com sucesso.");
+        } catch (error) {
+            console.error("Erro ao excluir loja: ", error);
+            alert("Ocorreu um erro ao excluir a loja.");
+        } finally {
+            setIsConfirmModalOpen(false);
+            setLojaParaExcluir(null);
+        }
+    };
+
     return (
         <div className="gestao-lojas-container">
-            <div className="page-header">
-                <h1>Gestão de Lojas e Unidades</h1>
-                <button className="add-button" onClick={handleOpenModal}>
+            <div className="gestao-header">
+                <h1 className="gestao-title">Gestão de Lojas</h1>
+                <button className="add-button" onClick={abrirModalParaAdicionar}>
                     <PlusCircle size={20} />
-                    <span>Adicionar Nova Loja</span>
+                    Adicionar Loja
                 </button>
             </div>
-            
-            <div className="content-area">
-              {/* ÁREA DE CONTEÚDO ATUALIZADA COM A TABELA */}
-              <table className="lojas-table">
-                <thead>
-                    <tr>
-                        <th>Cód.</th>
-                        <th>Nome da Unidade</th>
-                        <th>Responsável</th>
-                        <th>Cidade/UF</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {isLoading ? (
-                        <tr><td colSpan="5" className="table-message"><Loader2 className="animate-spin" /> Carregando lojas...</td></tr>
-                    ) : lojasList.length > 0 ? (
-                        lojasList.map(loja => (
-                            <tr key={loja.id}>
-                                <td><span className="codigo-loja">{loja.codigoCurto || 'N/A'}</span></td>
-                                <td>{loja.nomeUnidade}</td>
-                                <td>{loja.responsavel}</td>
-                                <td>{loja.endereco.cidade} / {loja.endereco.estado}</td>
-                                <td className="actions-cell">
-                                    <button className="action-button edit-button" title="Editar Loja (em breve)">
-                                        <Edit size={16} />
-                                    </button>
-                                    <button className="action-button delete-button" title="Excluir Loja (em breve)">
-                                        <Trash2 size={16} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))
-                    ) : (
-                        <tr><td colSpan="5" className="table-message">Nenhuma loja cadastrada. Clique em "Adicionar Nova Loja" para começar.</td></tr>
-                    )}
-                </tbody>
-              </table>
+            <div className="table-container">
+                <table className="lojas-table">
+                    <thead>
+                        <tr>
+                            <th>Nome da Unidade</th>
+                            <th>CNPJ</th>
+                            <th>Cidade/Estado</th>
+                            <th>Responsável</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {isLoading ? (
+                            <tr><td colSpan="5" className="table-message"><Loader2 className="animate-spin" /> Carregando lojas...</td></tr>
+                        ) : lojasList.length > 0 ? (
+                            lojasList.map((loja) => (
+                                <tr key={loja.id}>
+                                    <td>{loja.nomeUnidade}</td>
+                                    <td>{loja.cnpj}</td>
+                                    <td>{loja.endereco?.cidade}/{loja.endereco?.estado}</td>
+                                    <td>{loja.responsavel?.nome}</td>
+                                    <td className="actions-cell">
+                                        <button title="Editar" className="action-button edit-button" onClick={() => abrirModalParaEditar(loja)}><Edit size={16} /></button>
+                                        <button title="Excluir" className="action-button delete-button" onClick={() => abrirModalConfirmacao(loja)}><Trash2 size={16} /></button>
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr><td colSpan="5" className="table-message">Nenhuma loja cadastrada para esta empresa.</td></tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
 
-            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title="Adicionar Nova Loja">
-                <form onSubmit={handleSubmit} className="modal-form-loja">
-                    <div className="form-group">
-                        <label htmlFor="nomeUnidade">Nome da Unidade / Loja</label>
-                        <input id="nomeUnidade" name="nomeUnidade" type="text" value={formData.nomeUnidade} onChange={handleInputChange} required placeholder="Ex: Centro de Distribuição SP" />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="responsavel">Nome do Responsável</label>
-                        <input id="responsavel" name="responsavel" type="text" value={formData.responsavel} onChange={handleInputChange} required placeholder="Ex: João da Silva" />
-                    </div>
-                     <div className="form-group">
-                        <label htmlFor="telefone">Telefone de Contato</label>
-                        <input id="telefone" name="telefone" type="tel" value={formData.telefone} onChange={handleInputChange} placeholder="(11) 99999-9999" />
-                    </div>
-                     <div className="form-group">
-                        <label htmlFor="tipoOperacao">Tipo de Operação Principal</label>
-                        <input id="tipoOperacao" name="tipoOperacao" type="text" value={formData.tipoOperacao} onChange={handleInputChange} placeholder="Ex: Grãos, Cargas refrigeradas, etc." />
-                    </div>
+            <Modal isOpen={isModalOpen} onClose={fecharModal} title={lojaEmEdicaoId ? 'Editar Loja' : 'Adicionar Nova Loja'}>
+                <form onSubmit={handleSalvarLoja} className="modal-form-frota">
+                    <h4 className="form-subtitle"><Home size={16} /> Dados da Loja</h4>
+                    <div className="form-group"><label>Nome da Unidade</label><input name="nomeUnidade" value={formData.nomeUnidade} onChange={handleInputChange} required /></div>
+                    <div className="form-group"><label>CNPJ da Unidade</label><input name="cnpj" value={formData.cnpj} onChange={handleInputChange} /></div>
 
-                    <h4 className="form-subtitle">Endereço da Loja</h4>
-                    <div className="form-group">
-                        <label htmlFor="cep">CEP</label>
-                        <input id="cep" name="cep" type="text" value={formData.endereco.cep} onChange={handleCepChange} maxLength="9" placeholder="Digite o CEP para buscar" />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="rua">Rua / Logradouro</label>
-                        <input id="rua" name="rua" type="text" value={formData.endereco.rua} onChange={handleEnderecoChange} required />
+                    <h4 className="form-subtitle"><MapPin size={16} /> Endereço</h4>
+                    <div className="form-group"><label>CEP</label><input name="cep" value={formData.endereco.cep} onChange={(e) => handleInputChange(e, 'endereco')} maxLength="9" /></div>
+                    <div className="form-group"><label>Rua</label><input name="rua" value={formData.endereco.rua} onChange={(e) => handleInputChange(e, 'endereco')} /></div>
+                    <div className="form-row-2-col">
+                        <div className="form-group"><label>Número</label><input name="numero" value={formData.endereco.numero} onChange={(e) => handleInputChange(e, 'endereco')} /></div>
+                        <div className="form-group"><label>Bairro</label><input name="bairro" value={formData.endereco.bairro} onChange={(e) => handleInputChange(e, 'endereco')} /></div>
                     </div>
                     <div className="form-row-2-col">
-                        <div className="form-group">
-                            <label htmlFor="numero">Número</label>
-                            <input id="numero" name="numero" type="text" value={formData.endereco.numero} onChange={handleEnderecoChange} required />
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="bairro">Bairro</label>
-                            <input id="bairro" name="bairro" type="text" value={formData.endereco.bairro} onChange={handleEnderecoChange} required />
-                        </div>
+                        <div className="form-group"><label>Cidade</label><input name="cidade" value={formData.endereco.cidade} onChange={(e) => handleInputChange(e, 'endereco')} /></div>
+                        <div className="form-group"><label>Estado</label><input name="estado" value={formData.endereco.estado} onChange={(e) => handleInputChange(e, 'endereco')} maxLength="2" /></div>
                     </div>
-                     <div className="form-row-2-col">
-                        <div className="form-group">
-                            <label htmlFor="cidade">Cidade</label>
-                            <input id="cidade" name="cidade" type="text" value={formData.endereco.cidade} onChange={handleEnderecoChange} required />
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="estado">Estado</label>
-                            <input id="estado" name="estado" type="text" value={formData.endereco.estado} onChange={handleEnderecoChange} required maxLength="2" />
-                        </div>
+
+                    <h4 className="form-subtitle"><User size={16} /> Contato Responsável</h4>
+                    <div className="form-group"><label>Nome do Responsável</label><input name="nome" value={formData.responsavel.nome} onChange={(e) => handleInputChange(e, 'responsavel')} /></div>
+                    <div className="form-row-2-col">
+                        <div className="form-group"><label>Email</label><input name="email" type="email" value={formData.responsavel.email} onChange={(e) => handleInputChange(e, 'responsavel')} /></div>
+                        <div className="form-group"><label>Telefone</label><input name="telefone" type="tel" value={formData.responsavel.telefone} onChange={(e) => handleInputChange(e, 'responsavel')} /></div>
                     </div>
 
                     <div className="form-actions">
-                        <button type="button" className="cancel-button" onClick={handleCloseModal} disabled={isSubmitting}>
-                            Cancelar
-                        </button>
+                        <button type="button" className="cancel-button" onClick={fecharModal} disabled={isSubmitting}>Cancelar</button>
                         <button type="submit" className="add-button" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="animate-spin" /> : 'Salvar Loja'}
+                            {isSubmitting ? <Loader2 className="animate-spin" /> : (lojaEmEdicaoId ? 'Salvar Alterações' : 'Adicionar Loja')}
                         </button>
                     </div>
                 </form>
             </Modal>
+            
+            <ConfirmationModal
+                isOpen={isConfirmModalOpen}
+                onClose={() => setIsConfirmModalOpen(false)}
+                onConfirm={handleConfirmarExclusao}
+                title="Confirmar Exclusão"
+            >
+                <p>Você tem certeza que deseja excluir esta loja permanentemente?</p>
+                {lojaParaExcluir && <p className="item-destaque">{lojaParaExcluir.nomeUnidade}</p>}
+            </ConfirmationModal>
         </div>
     );
 }

@@ -1,4 +1,4 @@
-/* ALTERADO: Todos os prefixos '.passaporte-' viraram '.cartao-os-' */
+/* Estilos normais do componente */
 .cartao-os-container {
     background-color: #ffffff;
     border: 1px solid #e5e7eb;
@@ -10,7 +10,6 @@
     overflow: hidden;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
-
 .cartao-os-header {
     background-color: #111827;
     color: #ffffff;
@@ -19,9 +18,7 @@
     justify-content: space-between;
     align-items: center;
 }
-
 .cartao-os-header h2 { margin: 0; font-size: 1.25rem; font-weight: 600; }
-
 .cartao-os-os {
     display: flex;
     align-items: center;
@@ -32,97 +29,38 @@
     font-size: 0.9rem;
     font-weight: 500;
 }
-
-/* ===== NOVO: Estilo para a seção do Solicitante ===== */
 .cartao-os-secao-solicitante {
     display: flex;
     align-items: center;
     gap: 1.5rem;
     padding: 1.5rem;
     border-bottom: 1px solid #e5e7eb;
-    background-color: #f9fafb; /* Um leve destaque */
+    background-color: #f9fafb;
 }
-
-.solicitante-icone {
-    flex-shrink: 0;
-    color: #4b5563;
-}
-
-.solicitante-info {
-    min-width: 0;
-}
-
-.solicitante-label {
-    font-size: 0.8rem;
-    color: #6b7280;
-    text-transform: uppercase;
-    font-weight: 600;
-}
-
-.solicitante-nome {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0.25rem 0 0 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: #111827;
-}
-/* ================================================= */
-
-.cartao-os-secao-trabalhador {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    padding: 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-}
-
+.solicitante-icone { flex-shrink: 0; color: #4b5563; }
+.solicitante-info { min-width: 0; }
+.solicitante-label { font-size: 0.8rem; color: #6b7280; text-transform: uppercase; font-weight: 600; }
+.solicitante-nome { font-size: 1.25rem; font-weight: 600; margin: 0.25rem 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #111827; }
+.cartao-os-secao-trabalhador { display: flex; align-items: center; gap: 1.5rem; padding: 1.5rem; border-bottom: 1px solid #e5e7eb; }
 .trabalhador-avatar { width: 80px; height: 80px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background-color: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; }
 .trabalhador-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .trabalhador-info { min-width: 0; }
 .trabalhador-label { font-size: 0.8rem; color: #6b7280; text-transform: uppercase; }
 .trabalhador-nome { font-size: 1.5rem; font-weight: 700; margin: 0.25rem 0 0.5rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .trabalhador-docs { display: flex; gap: 1rem; font-size: 0.9rem; color: #4b5563; }
-
-.cartao-os-secao {
-    padding: 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-}
+.cartao-os-secao { padding: 1.5rem; border-bottom: 1px solid #e5e7eb; }
 .cartao-os-secao:last-of-type { border-bottom: none; }
-
 .cartao-os-secao h4 { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; font-weight: 600; color: #6b7280; text-transform: uppercase; margin: 0 0 1rem 0; }
-
 .detalhe-item-cartao-os .detalhe-label { font-size: 0.75rem; color: #6b7280; font-weight: 500; text-transform: uppercase; }
 .detalhe-item-cartao-os p { font-size: 1rem; margin: 0.25rem 0 0 0; line-height: 1.5; }
 .detalhe-item-cartao-os:not(:last-child) { margin-bottom: 1rem; }
 .requisitos-texto-cartao-os { margin: 0; font-size: 1rem; line-height: 1.5; }
-
 .cartao-os-secao.advertencia { background-color: #fffbeb; }
 .cartao-os-secao.advertencia h4 { color: #b45309; }
 .cartao-os-secao.advertencia p { color: #92400e; margin: 0; }
-
-.cartao-os-footer {
-    background-color: #f9fafb;
-    padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1.5rem;
-}
-
-.qr-code-placeholder {
-    width: 90px;
-    height: 90px;
-    background-color: #fff;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
+.cartao-os-footer { background-color: #f9fafb; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
+.qr-code-placeholder { width: 90px; height: 90px; background-color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 5px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
 .plataforma-info { text-align: right; }
 .plataforma-info span { font-size: 0.8rem; color: #6b7280; }
 .plataforma-info p { font-size: 1.25rem; font-weight: bold; color: #111827; margin: 0.25rem 0 0 0; }
+

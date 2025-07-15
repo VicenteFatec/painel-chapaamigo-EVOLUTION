@@ -1,19 +1,17 @@
 // ===================================================================
-// ARQUIVO ATUALIZADO: src/pages/MinhaFrotaPage.jsx
-// Versão modernizada com formulário completo, integração com lojas
-// e visualização de dados em tempo real.
+// ARQUIVO 100% COMPLETO E CORRIGIDO: src/pages/MinhaFrotaPage.jsx
+// Aplicado o filtro de segurança na busca e o "carimbo" na criação.
 // ===================================================================
 
 import React, { useState, useEffect } from 'react';
 import './MinhaFrotaPage.css';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { db } from '../firebaseConfig';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore';
+import { db, auth } from '../firebaseConfig'; // Importado 'auth'
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, where } from 'firebase/firestore'; // Importado 'where'
 import { PlusCircle, Edit, Trash2, Loader2, User, Truck, MapPin, Building } from 'lucide-react';
 import axios from 'axios';
 
-// Novo estado inicial, refletindo a estrutura de dados completa
 const ESTADO_INICIAL_FROTA = {
     nomeCompleto: '',
     cpf: '',
@@ -21,14 +19,9 @@ const ESTADO_INICIAL_FROTA = {
     dataNascimento: '',
     cnh: '',
     telefone: '',
-    veiculo: {
-        modelo: '',
-        placa: ''
-    },
-    enderecoMotorista: {
-        cep: '', rua: '', numero: '', bairro: '', cidade: '', estado: ''
-    },
-    lojaId: '', // Campo para vincular à loja
+    veiculo: { modelo: '', placa: '' },
+    enderecoMotorista: { cep: '', rua: '', numero: '', bairro: '', cidade: '', estado: '' },
+    lojaId: '',
     ativo: true
 };
 
@@ -43,11 +36,16 @@ function MinhaFrotaPage() {
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [membroParaExcluir, setMembroParaExcluir] = useState(null);
 
-    // Efeito para buscar a frota em tempo real
+    // EFEITO PARA BUSCAR A FROTA DA EMPRESA LOGADA
     useEffect(() => {
+        if (!auth.currentUser) return;
         setIsLoading(true);
         const frotaCollectionRef = collection(db, "frota");
-        const q = query(frotaCollectionRef, orderBy("nomeCompleto"));
+        const q = query(
+            frotaCollectionRef, 
+            where("empresaId", "==", auth.currentUser.uid), // Filtro de segurança
+            orderBy("nomeCompleto")
+        );
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const frota = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setFrotaList(frota);
@@ -59,10 +57,15 @@ function MinhaFrotaPage() {
         return () => unsubscribe();
     }, []);
 
-    // Efeito para buscar as lojas para o formulário
+    // EFEITO PARA BUSCAR AS LOJAS DA EMPRESA LOGADA
     useEffect(() => {
+        if (!auth.currentUser) return;
         const lojasCollectionRef = collection(db, "lojas");
-        const q = query(lojasCollectionRef, orderBy("nomeUnidade"));
+        const q = query(
+            lojasCollectionRef,
+            where("empresaId", "==", auth.currentUser.uid), // Filtro de segurança
+            orderBy("nomeUnidade")
+        );
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const lojas = snapshot.docs.map(doc => ({ id: doc.id, nomeUnidade: doc.data().nomeUnidade }));
             setLojasList(lojas);
@@ -87,12 +90,12 @@ function MinhaFrotaPage() {
     };
 
     const handleCepChange = async (e) => {
-        const cepValue = e.target.value;
-        handleEnderecoChange(e);
-        const cep = cepValue.replace(/\D/g, '');
-        if (cep.length === 8) {
+        const cepValue = e.target.value.replace(/\D/g, '');
+        const cepFormatado = cepValue.replace(/(\d{5})(\d)/, '$1-$2').slice(0, 9);
+        setFormData(prev => ({...prev, enderecoMotorista: {...prev.enderecoMotorista, cep: cepFormatado}}));
+        if (cepValue.length === 8) {
             try {
-                const { data } = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
+                const { data } = await axios.get(`https://viacep.com.br/ws/${cepValue}/json/`);
                 if (!data.erro) {
                     setFormData(prev => ({
                         ...prev,
@@ -105,9 +108,7 @@ function MinhaFrotaPage() {
                         }
                     }));
                 }
-            } catch (error) {
-                console.error("Erro ao buscar CEP:", error);
-            }
+            } catch (error) { console.error("Erro ao buscar CEP:", error); }
         }
     };
 
@@ -119,7 +120,6 @@ function MinhaFrotaPage() {
     };
 
     const abrirModalParaEditar = (membro) => {
-        // Garante que todos os campos, incluindo os aninhados, existam
         const dadosParaEdicao = {
             ...ESTADO_INICIAL_FROTA,
             ...membro,
@@ -141,9 +141,13 @@ function MinhaFrotaPage() {
         setIsConfirmModalOpen(true);
     };
 
-    // Funções de CRUD (Create, Read, Update, Delete)
+    // FUNÇÃO DE SALVAR COM O "CARIMBO" DE EMPRESA
     const handleSalvarMembro = async (e) => {
         e.preventDefault();
+        if (!auth.currentUser) {
+            alert("Erro de autenticação. Por favor, faça login novamente.");
+            return;
+        }
         setIsSubmitting(true);
         try {
             if (membroEmEdicaoId) {
@@ -151,7 +155,11 @@ function MinhaFrotaPage() {
                 await updateDoc(membroDoc, formData);
                 alert("Membro da frota atualizado com sucesso!");
             } else {
-                await addDoc(collection(db, "frota"), formData);
+                const dadosParaSalvar = {
+                    ...formData,
+                    empresaId: auth.currentUser.uid // O CARIMBO
+                };
+                await addDoc(collection(db, "frota"), dadosParaSalvar);
                 alert("Novo membro adicionado à frota com sucesso!");
             }
             fecharModal();
@@ -224,7 +232,7 @@ function MinhaFrotaPage() {
                                 </tr>
                             ))
                         ) : (
-                            <tr><td colSpan="5" className="table-message">Nenhum motorista cadastrado.</td></tr>
+                            <tr><td colSpan="5" className="table-message">Nenhum motorista cadastrado para esta empresa.</td></tr>
                         )}
                     </tbody>
                 </table>

@@ -1,49 +1,178 @@
-/* Estilos para src/pages/HistoricoPage.css */
+/* Estilos para: src/pages/HistoricoPage.css */
 
 .historico-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem; /* Espaçamento entre os elementos principais */
+    padding: 1.5rem 2rem;
+}
+
+.gestao-header {
+    margin-bottom: 2rem;
+}
+
+.gestao-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+}
+
+.gestao-subtitle {
+    font-size: 1rem;
+    color: #6b7280;
 }
 
 .abas-container {
     display: flex;
-    border-bottom: 2px solid #e5e7eb; /* Linha divisória para as abas */
-    margin-bottom: 1rem;
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 2rem;
 }
 
 .aba-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     padding: 0.75rem 1.5rem;
     border: none;
     background-color: transparent;
     cursor: pointer;
     font-size: 1rem;
-    font-weight: 500;
-    color: #6b7280; /* Cor da aba inativa */
-    border-bottom: 3px solid transparent;
-    transition: all 0.2s ease-in-out;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: -2px; /* Alinha com a borda inferior */
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
 }
 
 .aba-button:hover {
-    color: #1f2937; /* Cor ao passar o mouse */
+    color: #374151;
 }
 
 .aba-button.active {
-    color: #4f46e5; /* Cor da aba ativa - um roxo/azul forte */
-    border-bottom-color: #4f46e5;
-    font-weight: 600;
+    color: #3b82f6;
+    border-bottom-color: #3b82f6;
 }
 
 .conteudo-abas {
-    padding: 1rem;
     background-color: #ffffff;
     border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    padding: 2rem;
 }
 
-.conteudo-abas h2 {
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-    font-size: 1.25rem;
-    color: #111827;
+.loading-container, .no-results-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: #6b7280;
+    min-height: 200px;
+    font-size: 1.1rem;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.historico-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.historico-table th, .historico-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+}
+
+.historico-table th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: #6b7280;
+    font-weight: 600;
+    background-color: #f9fafb;
+}
+
+.historico-table td {
+    font-size: 0.95rem;
+    color: #374151;
+}
+
+.historico-table tr:last-child td {
+    border-bottom: none;
+}
+
+.historico-table .no-results {
+    text-align: center;
+    color: #6b7280;
+    padding: 2rem;
+    font-size: 1rem;
+}
+
+.cliente-info .cliente-nome {
+    font-weight: 600;
+    display: block;
+}
+
+.cliente-info .cliente-os-id {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.status-info {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.status-finalizado {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.status-arquivado {
+    background-color: #e5e7eb;
+    color: #4b5563;
+}
+
+/* ESTILOS PARA A COLUNA DE AÇÕES */
+.acoes-historico {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.acao-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.ver-btn {
+    background-color: #eef2ff;
+    color: #4f46e5;
+    border-color: #c7d2fe;
+}
+
+.ver-btn:hover {
+    background-color: #e0e7ff;
+    border-color: #a5b4fc;
+}
+
+.imprimir-btn {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border-color: #d1d5db;
+}
+
+.imprimir-btn:hover {
+    background-color: #e5e7eb;
 }

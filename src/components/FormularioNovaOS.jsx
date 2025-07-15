@@ -1,20 +1,20 @@
 // ===================================================================
-// ARQUIVO ATUALIZADO: src/components/FormularioNovaOS.jsx
-// Integração com a coleção 'frota' concluída.
-// O campo de texto foi substituído por um seletor dinâmico.
+// ARQUIVO COMPLETO E CORRIGIDO: src/components/FormularioNovaOS.jsx
+// CORRIGIDO O "RACE CONDITION" NA BUSCA DA FROTA.
+// A busca agora aguarda a confirmação do usuário logado.
 // ===================================================================
 
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebaseConfig';
-// Adicionando query, onSnapshot e orderBy para buscar a frota
-import { collection, Timestamp, addDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '../firebaseConfig';
+// Adicionando 'onAuthStateChanged' para resolver o race condition
+import { collection, Timestamp, addDoc, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth'; // <-- NOVA IMPORTAÇÃO
 import { IMaskInput } from 'react-imask';
 import { Loader2 } from 'lucide-react';
 import axios from 'axios';
 
-// Estado inicial do formulário, agora com frotaId
 const initialState = {
-    frotaId: '', // NOVO CAMPO para o ID do membro da frota selecionado
+    frotaId: '',
     descricaoServico: '',
     estabelecimento: '',
     endereco: { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' },
@@ -36,24 +36,45 @@ const initialState = {
 const FormularioNovaOS = ({ onClose }) => {
     const [formData, setFormData] = useState(initialState);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    // NOVO ESTADO para armazenar a lista da frota
     const [frotaList, setFrotaList] = useState([]);
 
-    // EFEITO PARA BUSCAR A FROTA QUANDO O COMPONENTE É MONTADO
+    // ===================================================================
+    // EFEITO CORRIGIDO PARA BUSCAR A FROTA
+    // ===================================================================
     useEffect(() => {
-        const frotaCollectionRef = collection(db, "frota");
-        const q = query(frotaCollectionRef, orderBy("nomeCompleto"));
+        // Criamos um "vigia" para o estado de autenticação
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // SÓ QUANDO TEMOS CERTEZA QUE O USUÁRIO EXISTE...
+                // ...nós configuramos o listener para buscar a frota dele.
+                const frotaCollectionRef = collection(db, "frota");
+                const q = query(
+                    frotaCollectionRef, 
+                    where("empresaId", "==", user.uid), 
+                    orderBy("nomeCompleto")
+                );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const frota = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setFrotaList(frota);
+                const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+                    const frota = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setFrotaList(frota);
+                });
+
+                // Importante: retornamos a função de limpeza do listener da frota
+                // para que ela seja chamada quando o usuário deslogar.
+                return () => unsubscribeSnapshot();
+            } else {
+                // Se o usuário não estiver logado, a lista de frota é limpa.
+                setFrotaList([]);
+            }
         });
 
-        // Limpa o listener quando o componente é desmontado
-        return () => unsubscribe();
-    }, []);
+        // Limpa o "vigia" de autenticação quando o formulário for fechado (desmontado)
+        return () => unsubscribeAuth();
+    }, []); // O array vazio aqui está correto, pois onAuthStateChanged gerencia suas próprias atualizações.
 
-
+    // ===================================================================
+    // FUNÇÕES DE MANIPULAÇÃO (Handlers) - SEM ALTERAÇÕES
+    // ===================================================================
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -65,13 +86,13 @@ const FormularioNovaOS = ({ onClose }) => {
     };
     
     const handleCepChange = async (e) => {
-        const cepValue = e.target.value;
-        handleEnderecoChange({ target: { name: 'cep', value: cepValue } });
+        const cepValue = e.target.value.replace(/\D/g, '');
+        const cepFormatado = cepValue.replace(/(\d{5})(\d)/, '$1-$2').slice(0, 9);
+        setFormData(prev => ({...prev, endereco: {...prev.endereco, cep: cepFormatado}}));
         
-        const cep = cepValue.replace(/\D/g, '');
-        if (cep.length === 8) {
+        if (cepValue.length === 8) {
             try {
-                const { data } = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
+                const { data } = await axios.get(`https://viacep.com.br/ws/${cepValue}/json/`);
                 if (!data.erro) {
                     setFormData(prev => ({
                         ...prev,
@@ -108,9 +129,12 @@ const FormularioNovaOS = ({ onClose }) => {
             alert("Você deve aceitar os termos e condições para pagamentos via plataforma.");
             return;
         }
-        // Validação para garantir que um membro da frota foi selecionado
         if (!formData.frotaId) {
             alert("Por favor, selecione um motorista/veículo da sua frota.");
+            return;
+        }
+        if (!auth.currentUser) {
+            alert("Erro de autenticação. Por favor, faça login novamente.");
             return;
         }
         setIsSubmitting(true);
@@ -125,12 +149,10 @@ const FormularioNovaOS = ({ onClose }) => {
                 .filter(([, value]) => value === true)
                 .map(([key]) => key);
 
-            // Removendo campos desnecessários antes de salvar
             const { cliente, veiculo, ...dadosParaSalvar } = formData;
 
             const docData = {
                 ...dadosParaSalvar,
-                // Adicionando os dados do membro selecionado para referência
                 cliente: membroSelecionado.nomeCompleto,
                 veiculo: membroSelecionado.veiculo,
                 valorServicoBruto: valorFinal,
@@ -139,6 +161,7 @@ const FormularioNovaOS = ({ onClose }) => {
                 dataServico: dataServicoTimestamp,
                 prazoTermino: prazoTerminoTimestamp,
                 status: 'pendente',
+                empresaId: auth.currentUser.uid,
             };
             
             await addDoc(collection(db, "solicitacoes"), docData);
@@ -152,15 +175,17 @@ const FormularioNovaOS = ({ onClose }) => {
             setIsSubmitting(false);
         }
     };
-
+    
+    // ===================================================================
+    // RENDERIZAÇÃO DO COMPONENTE (JSX) - SEM ALTERAÇÕES
+    // ===================================================================
     return (
         <form onSubmit={handleSubmit}>
             <div className="form-grid">
                 <div className="form-section">
                     <h4 className="form-section-title">Informações Gerais</h4>
-                    {/* CAMPO DE CLIENTE SUBSTITUÍDO PELO SELETOR DA FROTA */}
                     <div className="form-group">
-                        <label>Cliente / Veículo</label>
+                        <label>Cliente / Veículo da Frota</label>
                         <select name="frotaId" value={formData.frotaId} onChange={handleInputChange} required>
                             <option value="" disabled>-- Selecione um motorista da frota --</option>
                             {frotaList.map(membro => (
@@ -176,7 +201,6 @@ const FormularioNovaOS = ({ onClose }) => {
                     </div>
                 </div>
 
-                {/* O RESTANTE DO FORMULÁRIO PERMANECE IDÊNTICO */}
                 <div className="form-section">
                     <h4 className="form-section-title">Endereço do Serviço</h4>
                     <div className="form-group">

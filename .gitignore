@@ -1,3 +1,6 @@
 node_modules
 functions/.env
 .env
+.env*
+.env.chapa-amigo-teste-deploy
+.env.chapa-amigo-empresas
