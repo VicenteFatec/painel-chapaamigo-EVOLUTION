@@ -1,49 +1,28 @@
-// ===================================================================
-// ARQUIVO ATUALIZADO: src/App.jsx
-// Adicionada a rota para a nova página de Cadastro de Empresas.
-// ===================================================================
+// src/App.jsx (Completo com a Rota de Planos)
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuthContext } from './context/AuthContext.jsx';
 
-// Firebase
-import { auth } from './firebaseConfig';
-import { onAuthStateChanged } from "firebase/auth";
-
-// Componentes e Páginas
-import MainLayout from './components/MainLayout';
+// Importação das páginas
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage'; // ===== PASSO 1: IMPORTAR A NOVA PÁGINA =====
+import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import MinhaFrotaPage from './pages/MinhaFrotaPage';
 import SolicitacoesPage from './pages/SolicitacoesPage';
 import GestaoDeTalentosPage from './pages/GestaoDeTalentosPage';
-import HistoricoPage from './pages/HistoricoPage';
-import TicketPage from './pages/TicketPage';
+import MinhaFrotaPage from './pages/MinhaFrotaPage';
 import GestaoDeLojasPage from './pages/GestaoDeLojasPage';
+import HistoricoPage from './pages/HistoricoPage';
+import PlanosPage from './pages/PlanosPage'; // <-- NOVA PÁGINA IMPORTADA
+import MainLayout from './components/MainLayout';
 import { Loader2 } from 'lucide-react';
 
-// Componente auxiliar para proteger rotas
-const ProtectedRoute = ({ user, children }) => {
-    if (!user) {
-        return <Navigate to="/login" replace />;
-    }
-    return children;
-};
+// Componente para proteger rotas que exigem autenticação
+function ProtectedRoute({ children }) {
+    const { currentUser, loading } = useAuthContext();
 
-function App() {
-    const [user, setUser] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
-            setIsLoading(false);
-        });
-        return () => unsubscribe();
-    }, []);
-
-    if (isLoading) {
+    if (loading) {
+        // Exibe um loader enquanto a autenticação está sendo verificada
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <Loader2 size={48} className="animate-spin" />
@@ -51,35 +30,45 @@ function App() {
         );
     }
 
+    if (!currentUser) {
+        // Se não houver usuário após o carregamento, redireciona para o login
+        return <Navigate to="/login" replace />;
+    }
+
+    // Se houver usuário, renderiza o conteúdo da rota protegida
+    return children;
+}
+
+function App() {
     return (
         <Router>
             <Routes>
-                {/* ROTAS PÚBLICAS */}
-                <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <LoginPage />} />
-                
-                {/* ===== PASSO 2: ADICIONAR A ROTA DE CADASTRO ===== */}
-                <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <RegisterPage />} />
+                {/* Rotas Públicas */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
 
-                <Route path="/ticket/:osId" element={<TicketPage />} />
-
-                {/* ROTAS PROTEGIDAS */}
+                {/* Rotas Protegidas dentro do MainLayout */}
                 <Route
                     path="/"
                     element={
-                        <ProtectedRoute user={user}>
+                        <ProtectedRoute>
                             <MainLayout />
                         </ProtectedRoute>
                     }
                 >
+                    {/* A rota inicial '/' redireciona para o dashboard */}
                     <Route index element={<Navigate to="/dashboard" replace />} />
                     <Route path="dashboard" element={<DashboardPage />} />
-                    <Route path="frota" element={<MinhaFrotaPage />} />
                     <Route path="operacoes" element={<SolicitacoesPage />} />
                     <Route path="talentos" element={<GestaoDeTalentosPage />} />
-                    <Route path="historico" element={<HistoricoPage />} />
+                    <Route path="frota" element={<MinhaFrotaPage />} />
                     <Route path="lojas" element={<GestaoDeLojasPage />} />
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="historico" element={<HistoricoPage />} />
+                    <Route path="planos" element={<PlanosPage />} /> {/* <-- NOVA ROTA ADICIONADA */}
                 </Route>
+
+                {/* Rota de fallback para qualquer caminho não encontrado */}
+                <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
         </Router>
     );

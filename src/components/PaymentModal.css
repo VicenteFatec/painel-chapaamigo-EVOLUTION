@@ -1,0 +1,63 @@
+/* src/components/PaymentModal.css */
+
+.payment-form-container {
+    position: relative;
+    min-height: 450px; /* Altura mínima para acomodar o formulário */
+}
+
+.payment-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 8px;
+    color: #1a202c;
+}
+
+.payment-overlay p {
+    margin-top: 1rem;
+    font-weight: 500;
+}
+
+.payment-error-modal {
+    background-color: #fed7d7;
+    color: #c53030;
+    padding: 0.75rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.payment-success-container {
+    text-align: center;
+    padding: 2rem;
+}
+
+.payment-success-container h2 {
+    color: #2f855a;
+    margin-bottom: 1rem;
+}
+
+.payment-success-container p {
+    margin-bottom: 0.5rem;
+}
+
+/* ===== CORREÇÃO SUGERIDA PELO CAPITÃO ===== */
+.debug-info {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.6; /* Garante o espaçamento entre as linhas */
+    color: #4a5568;
+    font-family: monospace;
+}

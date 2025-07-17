@@ -1,16 +1,13 @@
-// CÓDIGO CORRIGIDO E FINALIZADO PARA: src/components/MainLayout.jsx
+// src/components/MainLayout.jsx (Completo com o Link de Planos)
 
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, ClipboardList, LogOut, Award, Archive, Building } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, LogOut, Award, Archive, Building, CreditCard } from 'lucide-react'; // <-- ÍCONE DO CARTÃO ADICIONADO
 import './MainLayout.css';
-
-// ===== IMPORTAÇÕES NECESSÁRIAS PARA O LOGOUT =====
-import { auth } from '../firebaseConfig'; // Importa a instância do auth
-import { signOut } from 'firebase/auth'; // Importa a função signOut
+import { getAuth, signOut } from 'firebase/auth';
+import { useAuthContext } from '../context/AuthContext.jsx';
 
 const getPageTitle = (pathname) => {
-    // ... (nenhuma alteração nesta função)
     switch (pathname) {
         case '/dashboard': return 'Dashboard';
         case '/operacoes': return 'Mesa de Operações';
@@ -18,6 +15,7 @@ const getPageTitle = (pathname) => {
         case '/frota': return 'Minha Frota';
         case '/historico': return 'Histórico';
         case '/lojas': return 'Gestão de Lojas';
+        case '/planos': return 'Meu Plano e Assinatura'; // <-- TÍTULO DA NOVA PÁGINA
         default: return 'Painel';
     }
 };
@@ -25,26 +23,23 @@ const getPageTitle = (pathname) => {
 function MainLayout() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { currentUser, userRole, loading } = useAuthContext();
     
-    // ===== OBTER DADOS DO USUÁRIO LOGADO =====
-    // O objeto auth.currentUser está disponível aqui porque este componente
-    // só é renderizado para usuários autenticados (graças ao ProtectedRoute).
-    const userEmail = auth.currentUser ? auth.currentUser.email : 'Usuário';
+    const userEmail = currentUser ? currentUser.email : 'Carregando...';
 
-    // ===== FUNÇÃO DE LOGOUT CORRIGIDA =====
     const handleLogout = async () => {
+        const auth = getAuth();
         try {
             await signOut(auth);
-            // Após o signOut bem-sucedido, o onAuthStateChanged no App.jsx
-            // irá detectar a mudança e redirecionar para /login automaticamente.
-            // A navegação explícita abaixo é um reforço.
             navigate('/login');
         } catch (error) {
             console.error("Erro ao fazer logout:", error);
-            // Opcional: Adicionar um alerta para o usuário em caso de falha no logout
-            alert("Não foi possível sair. Por favor, tente novamente.");
         }
     };
+
+    if (loading) {
+        return <div className="loading-container">Carregando Painel...</div>;
+    }
 
     return (
         <div className="main-layout">
@@ -56,17 +51,20 @@ function MainLayout() {
                 <nav className="sidebar-nav">
                     <NavLink to="/dashboard" className="nav-link"><LayoutDashboard size={20} /><span>Dashboard</span></NavLink>
                     <NavLink to="/operacoes" className="nav-link"><ClipboardList size={20} /><span>Mesa de Operações</span></NavLink>
-                    <NavLink to="/talentos" className="nav-link"><Award size={20} /><span>Gestão de Trabalhadores</span></NavLink>
+                    
+                    {userRole === 'superAdmin' && (
+                        <NavLink to="/talentos" className="nav-link"><Award size={20} /><span>Gestão de Trabalhadores</span></NavLink>
+                    )}
+
                     <NavLink to="/frota" className="nav-link"><Users size={20} /><span>Minha Frota</span></NavLink>
                     <NavLink to="/lojas" className="nav-link"><Building size={20} /><span>Gestão de Lojas</span></NavLink>
                     <NavLink to="/historico" className="nav-link"><Archive size={20} /><span>Histórico</span></NavLink>
+                    <NavLink to="/planos" className="nav-link"><CreditCard size={20} /><span>Meu Plano</span></NavLink> {/* <-- NOVO LINK ADICIONADO */}
                 </nav>
                 <div className="sidebar-footer">
-                    {/* Exibe o e-mail do usuário real */}
                     <div className="user-info">
                         <span className="user-email">{userEmail}</span>
                     </div>
-                    {/* O botão agora chama a função de logout correta */}
                     <button onClick={handleLogout} className="logout-button">
                         <LogOut size={20} /><span>Sair</span>
                     </button>

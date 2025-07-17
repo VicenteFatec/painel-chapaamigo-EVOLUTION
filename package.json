@@ -16,6 +16,7 @@
     "firebase-functions": "^6.3.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.523.0",
+    "mercadopago": "^2.8.0",
     "papaparse": "^5.5.3",
     "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
@@ -24,7 +25,9 @@
     "react-leaflet": "^5.0.0",
     "react-qr-code": "^2.0.17",
     "react-router-dom": "^7.6.2",
-    "react-select": "^5.10.1"
+    "react-select": "^5.10.1",
+    "twilio": "^5.7.3",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

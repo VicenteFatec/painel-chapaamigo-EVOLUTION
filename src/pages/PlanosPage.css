@@ -1,0 +1,206 @@
+/* src/pages/PlanosPage.css */
+
+.planos-page-container {
+    padding: 2rem;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.planos-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.planos-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 0.5rem;
+}
+
+.planos-header p {
+    font-size: 1.1rem;
+    color: #718096;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.planos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.plano-card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 2rem;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.plano-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+}
+
+.plano-card.destaque {
+    border-color: #4a5568;
+    border-width: 2px;
+    transform: scale(1.05);
+}
+
+.destaque-badge, .plano-atual-badge {
+    position: absolute;
+    top: 15px;
+    right: -40px;
+    background-color: #2d3748;
+    color: white;
+    padding: 5px 40px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transform: rotate(45deg);
+    text-align: center;
+}
+
+.plano-atual-badge {
+    background-color: #2f855a; /* Verde */
+    right: -45px;
+}
+
+.plano-card-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.plano-icone {
+    background-color: #f7fafc;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    color: #4a5568;
+}
+
+.plano-card.destaque .plano-icone {
+    background-color: #2d3748;
+    color: white;
+}
+
+.plano-card-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.plano-preco {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.plano-preco .valor {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1a202c;
+}
+
+.plano-preco .periodo {
+    font-size: 1rem;
+    color: #718096;
+    margin-left: 0.25rem;
+}
+
+.plano-caracteristicas {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 2rem 0;
+    flex-grow: 1;
+}
+
+.plano-caracteristicas li {
+    padding-left: 1.5rem;
+    position: relative;
+    margin-bottom: 0.75rem;
+    color: #4a5568;
+}
+
+.plano-caracteristicas li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #48bb78;
+    font-weight: 700;
+}
+
+.plano-card-footer {
+    margin-top: auto;
+}
+
+.botao-plano {
+    width: 100%;
+    padding: 0.8rem;
+    border-radius: 8px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.botao-plano.upgrade {
+    background-color: #2d3748;
+    color: white;
+}
+
+.botao-plano.upgrade:hover {
+    background-color: #1a202c;
+}
+
+.botao-plano:disabled {
+    background-color: #e2e8f0;
+    color: #a0aec0;
+    cursor: not-allowed;
+}
+
+.loading-container-planos {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 80vh;
+    font-size: 1.2rem;
+    color: #4a5568;
+}
+
+.loading-container-planos svg {
+    margin-right: 10px;
+}
+/* Adicione estas classes ao final do seu arquivo src/pages/PlanosPage.css */
+
+.payment-error-alert {
+    background-color: #fed7d7;
+    color: #c53030;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #f56565;
+    text-align: center;
+    margin: 0 auto 2rem auto;
+    max-width: 800px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.botao-plano.upgrade .animate-spin {
+    display: inline-block;
+    margin: 0 auto;
+}

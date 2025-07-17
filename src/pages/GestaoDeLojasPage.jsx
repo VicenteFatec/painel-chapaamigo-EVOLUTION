@@ -1,17 +1,15 @@
-// ===================================================================
-// ARQUIVO 100% COMPLETO E CORRIGIDO (v2): src/pages/GestaoDeLojasPage.jsx
-// Corrigido o erro de referência ao ícone 'MapPin'.
-// ===================================================================
+// src/pages/GestaoDeLojasPage.jsx (com Limites de Plano Corrigidos v3)
 
 import React, { useState, useEffect } from 'react';
 import './GestaoDeLojasPage.css';
-import { db, auth } from '../firebaseConfig';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, where, updateDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, where, updateDoc, getDoc } from 'firebase/firestore';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
-// ===== CORREÇÃO: Ícone 'MapPin' adicionado à lista de importação =====
-import { PlusCircle, Edit, Trash2, Loader2, Home, User, Mail, Phone, MapPin } from 'lucide-react';
-import axios from 'axios';
+import { PlusCircle, Edit, Trash2, Loader2, Home, User, Mail, Phone, MapPin, ShieldCheck } from 'lucide-react';
+
+// IMPORTAMOS O NOSSO HOOK DE CONTEXTO
+import { useAuthContext } from '../context/AuthContext.jsx';
 
 const ESTADO_INICIAL_LOJA = {
     nomeUnidade: '',
@@ -22,46 +20,84 @@ const ESTADO_INICIAL_LOJA = {
 };
 
 function GestaoDeLojasPage() {
+    const { currentUser, userRole, loading: authLoading } = useAuthContext();
+
     const [lojasList, setLojasList] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLojasLoading, setIsLojasLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState(ESTADO_INICIAL_LOJA);
     const [lojaEmEdicaoId, setLojaEmEdicaoId] = useState(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [lojaParaExcluir, setLojaParaExcluir] = useState(null);
+    const [planoUsuario, setPlanoUsuario] = useState(null);
 
+    // useEffect para buscar os dados do plano do usuário
     useEffect(() => {
-        if (!auth.currentUser) {
-            setIsLoading(false);
+        if (!authLoading && currentUser) {
+            const fetchUserPlan = async () => {
+                const empresaDocRef = doc(db, 'empresas', currentUser.uid);
+                const empresaDocSnap = await getDoc(empresaDocRef);
+                if (empresaDocSnap.exists()) {
+                    setPlanoUsuario(empresaDocSnap.data());
+                } else {
+                    console.error("Documento da empresa não encontrado para o UID:", currentUser.uid);
+                }
+            };
+            fetchUserPlan();
+        }
+    }, [currentUser, authLoading]);
+
+    // useEffect para buscar as lojas
+    useEffect(() => {
+        if (!currentUser) {
+            setIsLojasLoading(false);
             return;
         };
         
-        setIsLoading(true);
+        setIsLojasLoading(true);
         const lojasCollectionRef = collection(db, "lojas");
         const q = query(
             lojasCollectionRef,
-            where("empresaId", "==", auth.currentUser.uid),
+            where("empresaId", "==", currentUser.uid),
             orderBy("nomeUnidade")
         );
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const lojas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setLojasList(lojas);
-            setIsLoading(false);
+            setIsLojasLoading(false);
         }, (error) => {
             console.error("Erro ao buscar lojas: ", error);
-            setIsLoading(false);
+            setIsLojasLoading(false);
         });
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
+
+    // LÓGICA DE VERIFICAÇÃO DE LIMITE - CALCULADA DIRETAMENTE NO RENDER
+    const getLimiteAtingido = () => {
+        // Bloqueia enquanto a autenticação ou os dados das lojas estão carregando
+        if (authLoading || isLojasLoading) {
+            return true;
+        }
+        // Libera para superAdmin
+        if (userRole === 'superAdmin') {
+            return false;
+        }
+        // Bloqueia se o plano do usuário ainda não foi carregado
+        if (!planoUsuario) {
+            // Isso pode acontecer por um instante, mas é uma segurança
+            return true;
+        }
+        // A verificação final e definitiva
+        return lojasList.length >= planoUsuario.limits.lojas;
+    };
+
+    const limiteAtingido = getLimiteAtingido();
 
     const handleInputChange = (e, section = null) => {
         const { name, value } = e.target;
         if (section) {
-            setFormData(prev => ({
-                ...prev,
-                [section]: { ...prev[section], [name]: value }
-            }));
+            setFormData(prev => ({ ...prev, [section]: { ...prev[section], [name]: value } }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
@@ -75,49 +111,33 @@ function GestaoDeLojasPage() {
 
     const abrirModalParaEditar = (loja) => {
         const dadosParaEdicao = { ...ESTADO_INICIAL_LOJA, ...loja };
-        // Garante que os objetos aninhados não sejam undefined
         dadosParaEdicao.endereco = { ...ESTADO_INICIAL_LOJA.endereco, ...loja.endereco };
         dadosParaEdicao.responsavel = { ...ESTADO_INICIAL_LOJA.responsavel, ...loja.responsavel };
-        
         setFormData(dadosParaEdicao);
         setLojaEmEdicaoId(loja.id);
         setIsModalOpen(true);
     };
 
-    const fecharModal = () => {
-        if (isSubmitting) return;
-        setIsModalOpen(false);
-    };
-
-    const abrirModalConfirmacao = (loja) => {
-        setLojaParaExcluir(loja);
-        setIsConfirmModalOpen(true);
-    };
+    const fecharModal = () => { if (!isSubmitting) setIsModalOpen(false); };
+    const abrirModalConfirmacao = (loja) => { setLojaParaExcluir(loja); setIsConfirmModalOpen(true); };
 
     const handleSalvarLoja = async (e) => {
         e.preventDefault();
-        if (!auth.currentUser) {
-            alert("Erro de autenticação. Por favor, faça login novamente.");
-            return;
-        }
+        if (!currentUser) { console.error("Erro de autenticação."); return; }
         setIsSubmitting(true);
         try {
             if (lojaEmEdicaoId) {
                 const lojaDoc = doc(db, "lojas", lojaEmEdicaoId);
                 await updateDoc(lojaDoc, formData);
-                alert("Loja atualizada com sucesso!");
+                console.log("Loja atualizada com sucesso!");
             } else {
-                const dadosParaSalvar = {
-                    ...formData,
-                    empresaId: auth.currentUser.uid
-                };
+                const dadosParaSalvar = { ...formData, empresaId: currentUser.uid };
                 await addDoc(collection(db, "lojas"), dadosParaSalvar);
-                alert("Nova loja adicionada com sucesso!");
+                console.log("Nova loja adicionada com sucesso!");
             }
             fecharModal();
         } catch (error) {
             console.error("Erro ao salvar loja: ", error);
-            alert("Ocorreu um erro ao salvar a loja.");
         } finally {
             setIsSubmitting(false);
         }
@@ -127,10 +147,9 @@ function GestaoDeLojasPage() {
         if (!lojaParaExcluir) return;
         try {
             await deleteDoc(doc(db, "lojas", lojaParaExcluir.id));
-            alert("Loja excluída com sucesso.");
+            console.log("Loja excluída com sucesso.");
         } catch (error) {
             console.error("Erro ao excluir loja: ", error);
-            alert("Ocorreu um erro ao excluir a loja.");
         } finally {
             setIsConfirmModalOpen(false);
             setLojaParaExcluir(null);
@@ -141,11 +160,29 @@ function GestaoDeLojasPage() {
         <div className="gestao-lojas-container">
             <div className="gestao-header">
                 <h1 className="gestao-title">Gestão de Lojas</h1>
-                <button className="add-button" onClick={abrirModalParaAdicionar}>
-                    <PlusCircle size={20} />
+                <button 
+                    className="add-button" 
+                    onClick={abrirModalParaAdicionar}
+                    disabled={limiteAtingido}
+                    title={
+                        userRole === 'superAdmin'
+                        ? "Adicionar loja (Modo Super Admin)"
+                        : (limiteAtingido 
+                            ? `Você atingiu o limite de ${planoUsuario?.limits.lojas || '...'} loja(s) do seu plano.` 
+                            : "Adicionar nova loja")
+                    }
+                >
+                    {userRole === 'superAdmin' ? <ShieldCheck size={20} /> : <PlusCircle size={20} />}
                     Adicionar Loja
                 </button>
             </div>
+            
+            {userRole !== 'superAdmin' && planoUsuario && limiteAtingido && (
+                <div className="limite-aviso">
+                    Você atingiu o limite de {planoUsuario.limits.lojas} loja(s) permitido pelo seu plano ({planoUsuario.plan}). Para adicionar mais lojas, considere fazer um upgrade.
+                </div>
+            )}
+
             <div className="table-container">
                 <table className="lojas-table">
                     <thead>
@@ -158,7 +195,7 @@ function GestaoDeLojasPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {isLoading ? (
+                        {isLojasLoading ? (
                             <tr><td colSpan="5" className="table-message"><Loader2 className="animate-spin" /> Carregando lojas...</td></tr>
                         ) : lojasList.length > 0 ? (
                             lojasList.map((loja) => (
