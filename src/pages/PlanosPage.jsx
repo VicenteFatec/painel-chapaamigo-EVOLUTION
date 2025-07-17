@@ -8,14 +8,7 @@ import { Loader2, Star, ShieldCheck, Gem } from 'lucide-react';
 import PaymentModal from '../components/PaymentModal';
 import './PlanosPage.css';
 
-const MODO_TESTE = true;
-
-const CHAVES_MERCADOPAGO = {
-  teste: "TEST-81b5c63a-86f8-4ff6-bca5-a7900c0a877a", // Sua Public Key de Teste
-  producao: "APP_USR-dd058d0f-9fe1-450f-a2fe-4108764144a1"
-};
-
-const MERCADOPAGO_PUBLIC_KEY = MODO_TESTE ? CHAVES_MERCADOPAGO.teste : CHAVES_MERCADOPAGO.producao;
+const MERCADOPAGO_PUBLIC_KEY = "APP_USR-6454c285-7cb6-403c-ab24-112914e42994";
 
 const DADOS_PLANOS = {
   essencial: {

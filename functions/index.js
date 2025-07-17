@@ -1,6 +1,6 @@
 // ===================================================================
-// ARQUIVO UNIFICADO - 16/07/2025
-// CORREÇÃO FINAL v16 (PROTOCOLO REAL): A vitória.
+// ARQUIVO UNIFICADO - 17/07/2025
+// CORREÇÃO FINAL v22 (ÚLTIMO RECURSO): A tentativa final e definitiva.
 // ===================================================================
 
 const { onCall, HttpsError, onRequest } = require("firebase-functions/v2/https");
@@ -11,28 +11,23 @@ const { defineString } = require('firebase-functions/params');
 const {
   MercadoPagoConfig,
   PreApproval,
-  PaymentMethod,
-  Customer
+  Customer,
+  CustomerCard
 } = require("mercadopago");
 const { v4: uuidv4 } = require('uuid');
 const twilio = require('twilio');
-const axios = require('axios'); // Adicionado import do axios
+const axios =require('axios');
 
 admin.initializeApp();
 
 // ===================================================================
 // CONTROLE DE AMBIENTE E SEGREDOS
 // ===================================================================
-const MODO_TESTE = true;
-
-// Segredos
-const mpAccessTokenProducao = defineString("MERCADOPAGO_ACCESSTOKEN");
-const mpAccessTokenTeste = defineString("MERCADOPAGO_TEST_ACCESSTOKEN");
 
 // IDs dos Planos do Mercado Pago
 const PLAN_IDS = {
-  profissional: "2c93808497f5faa70198139f16000bc4",
-  corporativo: "2c93808497f5fac30198139fb18a0b36",
+  profissional: defineString("ID_PLANO_PROFISSIONAL").value(),
+  corporativo: defineString("ID_PLANO_CORPORATIVO").value(),
 };
 
 // Twilio Configurations
@@ -44,8 +39,11 @@ const twilioTemplateSid = defineString("TWILIO_TEMPLATE_SID");
 // Google Maps API Key
 const googleMapsApiKey = defineString("GOOGLE_MAPS_API_KEY");
 
+const accessToken = defineString("MERCADOPAGO_TOKEN");
+
+
 // ===================================================================
-// FUNÇÃO: Criar Assinatura (ESTRATÉGIA FINAL "PROTOCOLO REAL")
+// FUNÇÃO: Criar Assinatura (ESTRATÉGIA FINAL "ÚLTIMO RECURSO")
 // ===================================================================
 exports.createSubscription = onCall(
   {
@@ -55,104 +53,90 @@ exports.createSubscription = onCall(
     ],
   },
   async (request) => {
-    logger.info(`Função 'createSubscription' acionada em MODO ${MODO_TESTE ? 'TESTE' : 'PRODUÇÃO'}.`);
 
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "A função só pode ser chamada por um usuário autenticado.");
-    }
+  logger.info(`Função 'createSubscription' acionadaa.`);
 
-    const accessToken = MODO_TESTE ? mpAccessTokenTeste.value() : mpAccessTokenProducao.value();
-    const { planId, cardData } = request.data;
-    const userId = request.auth.uid;
-
-    if (!planId || !cardData) {
-      throw new HttpsError("invalid-argument", "Os argumentos 'planId' e 'cardData' são obrigatórios.");
-    }
-
-    try {
-      const client = new MercadoPagoConfig({ accessToken: accessToken, options: { timeout: 5000 } });
-
-      const userDocRef = admin.firestore().collection("empresas").doc(userId);
-      const userDoc = await userDocRef.get();
-      if (!userDoc.exists) {
-        throw new HttpsError("not-found", "Usuário não encontrado no Firestore.");
-      }
-      const userData = userDoc.data();
-
-      logger.info(`Iniciando "Protocolo Real" para: ${userData.email}, plano: ${planId}`);
-
-      // --- PASSO 1: CRIAR OU ENCONTRAR O CLIENTE NO MERCADO PAGO ---
-      const customerClient = new Customer(client);
-      let customer;
-      const searchResult = await customerClient.search({ options: { email: userData.email } });
-
-      if (searchResult.results && searchResult.results.length > 0) {
-        customer = searchResult.results[0];
-        logger.info(`Cliente MP encontrado: ${customer.id}`);
-      } else {
-        customer = await customerClient.create({ body: { email: userData.email } });
-        logger.info(`Novo cliente MP criado: ${customer.id}`);
-      }
-      await userDocRef.update({ mpCustomerId: customer.id });
-
-      // --- PASSO 2: CRIAR O TOKEN DO CARTÃO (Ainda necessário para registrar o cartão) ---
-      const cardTokenResponse = await new PaymentMethod(client).create({
-        body: {
-          site_id: 'MLB', // Brasil
-          customer_id: customer.id,
-          token: cardData.token // O token gerado pelo Brick no frontend
-        }
-      });
-      
-      logger.info('Token de cartão processado para registrar o meio de pagamento.');
-
-      // --- PASSO 3: CRIAR A ASSINATURA ---
-      const preapprovalClient = new PreApproval(client);
-      const idempotencyKey = uuidv4(); // Chave para evitar cobranças duplicadas
-
-      const subscriptionBody = {
-        reason: `Assinatura Plano ${planId.charAt(0).toUpperCase() + planId.slice(1)} - Chapa Amigo`,
-        auto_recurring: {
-          frequency: 1,
-          frequency_type: "months",
-          transaction_amount: planId === "profissional" ? 199.00 : 499.00,
-          currency_id: "BRL",
-        },
-        back_url: "https://chapa-amigo-empresas.web.app/dashboard",
-        payer_email: userData.email,
-        preapproval_plan_id: PLAN_IDS[planId],
-        card_token_id: cardData.token, // Usamos o token original do frontend aqui
-        status: "authorized",
-      };
-
-      const response = await preapprovalClient.create({
-        body: subscriptionBody,
-        requestOptions: { idempotencyKey: idempotencyKey }
-      });
-
-      logger.info("VITÓRIA! Assinatura criada com sucesso:", response);
-      const subscriptionId = response.id;
-
-      await userDocRef.update({
-        plano: planId,
-        statusAssinatura: 'ativa',
-        mpSubscriptionId: subscriptionId,
-        mpPayerId: response.payer_id,
-        dataAssinatura: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      return { success: true, subscriptionId: subscriptionId };
-
-    } catch (error) {
-      logger.error("Erro detalhado no 'Protocolo Real':", JSON.stringify(error, null, 2));
-      const errorMessage = error.cause?.[0]?.description || error.message || "Não foi possível criar a assinatura.";
-      throw new HttpsError("internal", errorMessage, error.cause);
-    }
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "A função só pode ser chamada por um usuário autenticado.");
   }
+
+  // No seu código original era cardData.token, mas o SDK do MP gera um token.id
+  // Estou assumindo que o objeto enviado pelo front é { token: "..." }
+  const { planId, cardData } = request.data; 
+  const userId = request.auth.uid;
+
+  if (!planId || !cardData) {
+    throw new HttpsError("invalid-argument", "Os argumentos 'planId' e 'cardTokenId' são obrigatórios.");
+  }
+
+  const cardTokenId = cardData.token
+
+  try {
+    const client = new MercadoPagoConfig({ accessToken: accessToken.value(), options: { timeout: 5000, integratorId: "dev_aa2d89add88111ebb2fb0242ac130004" } });
+
+    const userDocRef = admin.firestore().collection("empresas").doc(userId);
+    const userDoc = await userDocRef.get();
+    if (!userDoc.exists) {
+      throw new HttpsError("not-found", "Usuário não encontrado no Firestore.");
+    }
+    const userData = userDoc.data();
+    
+    // Valida se o planId recebido existe no nosso mapeamento
+    if (!PLAN_IDS[planId]) {
+      throw new HttpsError("invalid-argument", `O plano '${planId}' não é válido.`);
+    }
+
+    logger.info(`Criando assinatura para: ${userData.email}, plano: ${planId}`);
+
+    const preapprovalClient = new PreApproval(client);
+    const idempotencyKey = uuidv4();
+
+    // --- CORPO DA REQUISIÇÃO AJUSTADO ---
+    const subscriptionBody = {
+      preapproval_plan_id: PLAN_IDS[planId], // <-- Ponto 2: Usando o ID do plano pré-configurado
+      reason: `Assinatura Plano ${planId} - Chapa Empresa`,
+      external_reference: userId, // <-- BOA PRÁTICA: Vincula a assinatura ao seu userId
+      payer_email: userData.email, // <-- API espera o email no nível principal
+      card_token_id: cardTokenId, // <-- Ponto 1: Usando o token do cartão diretamente
+      status: "authorized" // <-- Ponto 3: Garantindo que a assinatura comece como ativa
+    };
+    
+    // O objeto "auto_recurring" foi completamente removido.
+    // O campo "back_url" também foi removido por ser mais relevante para integrações com redirect.
+
+    logger.info(subscriptionBody);
+    
+
+    const response = await preapprovalClient.create({
+      body: subscriptionBody,
+      requestOptions: { idempotencyKey: idempotencyKey }
+    });
+
+    logger.info("VITÓRIA! Assinatura criada com sucesso:", response);
+    const subscriptionId = response.id;
+
+    await userDocRef.update({
+      plano: planId,
+      statusAssinatura: 'ativa',
+      mpSubscriptionId: subscriptionId,
+      mpPayerId: response.payer_id,
+      mpCardId: response.card_id,
+      dataAssinatura: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true, subscriptionId: subscriptionId };
+
+  } catch (error) {
+    logger.error("Erro detalhado ao criar assinatura:", JSON.stringify(error, null, 2));
+    const errorMessage = error.cause?.error?.message || error.cause?.[0]?.description || error.message || "Não foi possível criar a assinatura.";
+    throw new HttpsError("internal", errorMessage, error.cause);
+  }
+}
 );
 
+
 // ===================================================================
-// OUTRAS FUNÇÕES
+// OUTRAS FUNÇÕES (permanecem inalteradas)
 // ===================================================================
 exports.enviarMensagemTeste = onCall(
   {
