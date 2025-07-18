@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// Regras para o serviço Cloud Firestore
+service cloud.firestore {
+  // Aplica as regras a todos os documentos no banco de dados
+  match /databases/{database}/documents {
+
+    // Regra Padrão: Permite leitura e escrita apenas para usuários autenticados.
+    // Em um ambiente de produção real, refinaríamos estas regras para garantir
+    // que um usuário só possa acessar e modificar os próprios dados.
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

@@ -1,5 +1,16 @@
-// Conteúdo ATUALIZADO para: src/pages/RegisterPage.jsx
-// Inclui máscara de CNPJ e validação de senha forte.
+/**
+ * ===================================================================
+ * PÁGINA DE REGISTRO DE NOVAS EMPRESAS (VERSÃO CORRIGIDA)
+ * PROJETO: Chapa Amigo Empresas
+ * ARQUIVO: src/pages/RegisterPage.jsx
+ * DATA: 18/07/2025
+ *
+ * OBJETIVO:
+ * 1. Corrigir a falha que impedia o salvamento do e-mail no Firestore.
+ * 2. Garantir que todo novo usuário tenha um documento de empresa válido
+ * com todos os campos necessários.
+ * ===================================================================
+ */
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,19 +20,18 @@ import { auth, db } from '../firebaseConfig';
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
-// ===== NOVA FUNÇÃO: MÁSCARA DE CNPJ =====
+// Função para aplicar a máscara de CNPJ
 const formatCNPJ = (value) => {
     return value
-        .replace(/\D/g, '') // Remove tudo o que não é dígito
-        .replace(/(\d{2})(\d)/, '$1.$2') // Coloca um ponto entre o segundo e o terceiro dígitos
-        .replace(/(\d{3})(\d)/, '$1.$2') // Coloca um ponto entre o terceiro e o quarto dígitos
-        .replace(/(\d{3})(\d)/, '$1/$2') // Coloca uma barra entre o terceiro e o quarto dígitos
-        .replace(/(\d{4})(\d)/, '$1-$2') // Coloca um hífen antes dos dois últimos dígitos
-        .replace(/(-\d{2})\d+?$/, '$1'); // Impede que mais de 14 dígitos sejam inseridos
+        .replace(/\D/g, '')
+        .replace(/(\d{2})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+        .replace(/(-\d{2})\d+?$/, '$1');
 };
 
 function RegisterPage() {
-    // ... (estados existentes)
     const [companyName, setCompanyName] = useState('');
     const [cnpj, setCnpj] = useState('');
     const [adminName, setAdminName] = useState('');
@@ -40,7 +50,6 @@ function RegisterPage() {
         e.preventDefault();
         setError('');
 
-        // ===== VALIDAÇÃO DE SENHA ATUALIZADA =====
         const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
         if (!passwordRegex.test(password)) {
             setError('A senha deve ter no mínimo 8 caracteres, com pelo menos uma letra e um número.');
@@ -54,18 +63,22 @@ function RegisterPage() {
         setIsLoading(true);
 
         try {
+            // 1. Cria o usuário no Firebase Authentication
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
+            // 2. Prepara a referência para o documento no Firestore
             const companyDocRef = doc(db, 'empresas', user.uid);
 
+            // 3. Cria o documento da empresa no Firestore
             await setDoc(companyDocRef, {
                 adminUserId: user.uid,
                 companyName: companyName,
-                // Salva o CNPJ apenas com os números para facilitar buscas futuras
                 cnpj: cnpj.replace(/\D/g, ''),
                 adminName: adminName,
-                email: email,
+                // PONTO DE CORREÇÃO: Usamos user.email em vez do 'email' do estado.
+                // Isso garante que o e-mail salvo é exatamente o mesmo usado na autenticação.
+                email: user.email,
                 plan: 'essencial',
                 createdAt: serverTimestamp(),
                 limits: {
@@ -75,6 +88,7 @@ function RegisterPage() {
                 }
             });
             
+            // 4. Navega para o dashboard após o sucesso
             navigate('/dashboard');
 
         } catch (error) {
@@ -82,7 +96,7 @@ function RegisterPage() {
             if (error.code === 'auth/email-already-in-use') {
                 setError('Este e-mail já está em uso por outra conta.');
             } else {
-                // Outros tratamentos de erro...
+                setError('Ocorreu um erro ao criar a conta. Tente novamente.');
             }
         } finally {
             setIsLoading(false);
@@ -92,7 +106,6 @@ function RegisterPage() {
     return (
         <div className="register-page-container">
             <div className="register-box">
-                {/* ... (código do formulário JSX sem alterações, exceto pelo input do CNPJ) ... */}
                 <img src="/images/logo.svg" alt="Logo Chapa Amigo" className="register-logo" />
                 <h1 className="register-title">Crie sua Conta de Empresa</h1>
                 <p className="register-subtitle">Comece a gerenciar suas operações com o Plano Essencial.</p>
@@ -105,7 +118,6 @@ function RegisterPage() {
 
                     <div className="input-group">
                         <label htmlFor="cnpj">CNPJ</label>
-                        {/* Input do CNPJ agora usa a função de máscara */}
                         <input type="text" id="cnpj" value={cnpj} onChange={handleCnpjChange} required disabled={isLoading} />
                     </div>
 
