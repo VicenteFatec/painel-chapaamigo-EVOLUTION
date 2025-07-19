@@ -1,0 +1,35 @@
+.trial-banner {
+  background-color: #ffc107; /* Amarelo alerta */
+  color: #333;
+  padding: 12px 20px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 500;
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-bottom: 1px solid #e0a800;
+}
+
+.trial-banner p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.trial-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 12px;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.trial-button:hover {
+  background-color: #0056b3;
+}

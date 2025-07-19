@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude-code --version)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(setx:*)",
+      "Bash(where bash)",
+      "Bash(firebase deploy:*)",
+      "Bash(npx firebase deploy:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(cmd /c \"cd /d C:\\Users\\vicen\\Desktop\\painel-chapaamigo-EVOLUTION && firebase deploy --only functions\")",
+      "Bash(Remove-Item env:SHELL -ErrorAction SilentlyContinue)",
+      "Bash(gcloud:*)",
+      "Bash(set SHELL=cmd)",
+      "Bash(firebase:*)",
+      "Bash(deploy.bat)",
+      "Bash(cmd:*)",
+      "Bash(del deploy.bat)",
+      "Bash(rm:*)",
+      "Bash(echo $SHELL)",
+      "Bash(unset SHELL)",
+      "Bash(where git)"
+    ],
+    "deny": []
+  }
+}

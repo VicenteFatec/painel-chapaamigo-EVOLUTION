@@ -1,6 +1,6 @@
 // ===================================================================
-// ARQUIVO UNIFICADO - 17/07/2025
-// CORREÇÃO FINAL v22 (ÚLTIMO RECURSO): A tentativa final e definitiva.
+// ARQUIVO UNIFICADO - 18/07/2025
+// INTEGRAÇÃO DA FUNÇÃO DE TRIAL
 // ===================================================================
 
 // ===================================================================
@@ -8,6 +8,7 @@
 // ===================================================================
 // Esta seção importa todas as bibliotecas necessárias para o funcionamento das Cloud Functions
 
+const functions = require("firebase-functions/v1");
 const { onCall, HttpsError, onRequest } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { logger } = require("firebase-functions");
@@ -34,9 +35,11 @@ admin.initializeApp();
 // usando o sistema de parâmetros do Firebase Functions para segurança
 
 // IDs dos Planos do Mercado Pago - Mapeia os nomes dos planos para seus IDs reais
+const ID_PLANO_PROFISSIONAL = defineString("ID_PLANO_PROFISSIONAL");
+const ID_PLANO_CORPORATIVO = defineString("ID_PLANO_CORPORATIVO");
 const PLAN_IDS = {
-  profissional: defineString("ID_PLANO_PROFISSIONAL").value(),
-  corporativo: defineString("ID_PLANO_CORPORATIVO").value(),
+  profissional: ID_PLANO_PROFISSIONAL,
+  corporativo: ID_PLANO_CORPORATIVO,
 };
 
 // Mapeamento dos LIMITES para cada plano
@@ -53,7 +56,7 @@ const twilioPhoneNumber = defineString("TWILIO_PHONE_NUMBER");
 const twilioTemplateSid = defineString("TWILIO_TEMPLATE_SID");
 
 // Chave da API do Google Maps para geocodificação de endereços
-const googleMapsApiKey = defineString("GOOGLE_MAPS_API_KEY");
+const googleMapsApiKey = defineString("Maps_API_KEY");
 
 // Token de acesso do Mercado Pago para transações financeiras
 const accessToken = defineString("MERCADOPAGO_TOKEN");
@@ -125,7 +128,7 @@ exports.createSubscription = onCall(
     // MONTAGEM DO CORPO DA REQUISIÇÃO PARA O MERCADO PAGO
     // Estrutura os dados necessários para criar a assinatura recorrente
     const subscriptionBody = {
-      preapproval_plan_id: PLAN_IDS[planId], // ID do plano pré-configurado no MP
+      preapproval_plan_id: PLAN_IDS[planId].value(), // ID do plano pré-configurado no MP
       reason: `Assinatura Plano ${planId} - Chapa Empresa`, // Descrição da assinatura
       external_reference: userId, // Referência interna para vincular ao usuário
       payer_email: userData.email, // Email do pagador
@@ -371,7 +374,7 @@ exports.exibirDetalhesOS = onRequest({ cors: true }, async (req, res) => {
 exports.receberRespostaChapa = onRequest(async (req, res) => {
   // EXTRAÇÃO DOS DADOS DA MENSAGEM RECEBIDA
   const { From, Body } = req.body;
-  const respostaLimpa = Body.trim();
+  const _respostaLimpa = Body.trim();
   
   // PREPARAÇÃO DA RESPOSTA TWILIO (TwiML)
   const twiml = new twilio.twiml.MessagingResponse();
@@ -453,7 +456,7 @@ exports.receberNotificacaoMercadoPago = onRequest(async (request, response) => {
             const subscriptionInfo = await preapprovalClient.get({ id: subscriptionId });
             
             const idDoPlanoPago = subscriptionInfo.preapproval_plan_id;
-            const nomeDoPlano = Object.keys(PLAN_IDS).find(key => PLAN_IDS[key] === idDoPlanoPago) || 'essencial';
+            const nomeDoPlano = Object.keys(PLAN_IDS).find(key => PLAN_IDS[key].value() === idDoPlanoPago) || 'essencial';
 
             const novosLimites = LIMITES_DOS_PLANOS[nomeDoPlano];
             logger.info(`Empresa encontrada: ${empresaId}. Atualizando para o plano ${nomeDoPlano} com os limites:`, novosLimites);
@@ -536,4 +539,43 @@ exports.geocodeAddressOnCreate = onDocumentCreated("solicitacoes/{solicitacaoId}
     // TRATAMENTO DE ERROS NA GEOCODIFICAÇÃO
     logger.error("Erro ao chamar a API de Geocodificação:", error);
   }
+});
+
+
+// ===================================================================
+// SEÇÃO 10: TRIGGER DE AUTENTICAÇÃO - CONFIGURAÇÃO DE NOVA EMPRESA (CORRIGIDO)
+// ===================================================================
+// Esta função é acionada automaticamente sempre que um novo usuário é
+// criado no Firebase Authentication e configura o período de teste gratuito.
+
+exports.setupNewCompanyTrial = functions.auth.user().onCreate(async (user) => {
+    // O restante do código da função permanece exatamente o mesmo
+    const uid = user.uid;
+    const email = user.email;
+
+    logger.info(`Novo usuário criado: ${uid}, email: ${email}. Configurando período de teste.`);
+
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + 14);
+
+    const companyData = {
+        status: "trialing",
+        plan: "profissional",
+        trialEndDate: admin.firestore.Timestamp.fromDate(trialEndDate),
+        email: email,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        limits: LIMITES_DOS_PLANOS.profissional 
+    };
+
+    try {
+        const companyDocRef = admin.firestore().collection("empresas").doc(uid);
+        await companyDocRef.set(companyData, { merge: true });
+
+        logger.info(`Empresa ${uid} configurada com sucesso para o período de teste até ${trialEndDate.toLocaleDateString('pt-BR')}.`);
+        return null;
+
+    } catch (error) {
+        logger.error(`Falha ao configurar a empresa ${uid} para o teste:`, error);
+        return null;
+    }
 });

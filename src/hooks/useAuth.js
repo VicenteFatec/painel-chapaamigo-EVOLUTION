@@ -6,6 +6,10 @@ export function useAuth() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // ===== NOVO ESTADO PARA OS DADOS DA EMPRESA =====
+  const [empresaData, setEmpresaData] = useState(null);
+
   const auth = getAuth();
   const db = getFirestore();
 
@@ -19,24 +23,27 @@ export function useAuth() {
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
           setCurrentUser(user);
-          // Define a role do usuário. Se não existir, define como 'cliente' por padrão.
           setUserRole(userData.role || 'cliente');
+          // ===== AQUI ESTÁ A MUDANÇA: Salvamos TODOS os dados da empresa =====
+          setEmpresaData(userData); 
         } else {
-          // Documento da empresa não encontrado, talvez durante o processo de registro
+          // Documento da empresa não encontrado
           setCurrentUser(user);
           setUserRole(null); 
+          setEmpresaData(null); // Limpa os dados da empresa
         }
       } else {
         // Usuário está deslogado
         setCurrentUser(null);
         setUserRole(null);
+        setEmpresaData(null); // Limpa os dados da empresa
       }
       setLoading(false);
     });
 
-    // Limpa o listener quando o componente desmontar
     return () => unsubscribe();
   }, [auth, db]);
 
-  return { currentUser, userRole, loading };
+  // ===== RETORNAMOS TAMBÉM OS DADOS DA EMPRESA =====
+  return { currentUser, userRole, loading, empresaData };
 }

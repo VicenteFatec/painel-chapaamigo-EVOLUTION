@@ -1,11 +1,12 @@
-// src/components/MainLayout.jsx (Completo com o Link de Planos)
+// src/components/MainLayout.jsx (Versão Final e Corrigida)
 
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, ClipboardList, LogOut, Award, Archive, Building, CreditCard } from 'lucide-react'; // <-- ÍCONE DO CARTÃO ADICIONADO
+import { LayoutDashboard, Users, ClipboardList, LogOut, Award, Archive, Building, CreditCard } from 'lucide-react';
 import './MainLayout.css';
 import { getAuth, signOut } from 'firebase/auth';
 import { useAuthContext } from '../context/AuthContext.jsx';
+import TrialBanner from './TrialBanner.jsx'; // Importa nosso novo banner
 
 const getPageTitle = (pathname) => {
     switch (pathname) {
@@ -15,7 +16,7 @@ const getPageTitle = (pathname) => {
         case '/frota': return 'Minha Frota';
         case '/historico': return 'Histórico';
         case '/lojas': return 'Gestão de Lojas';
-        case '/planos': return 'Meu Plano e Assinatura'; // <-- TÍTULO DA NOVA PÁGINA
+        case '/planos': return 'Meu Plano e Assinatura';
         default: return 'Painel';
     }
 };
@@ -23,7 +24,8 @@ const getPageTitle = (pathname) => {
 function MainLayout() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { currentUser, userRole, loading } = useAuthContext();
+    // Agora pegamos também os dados da empresa do contexto
+    const { currentUser, userRole, loading, empresaData } = useAuthContext();
     
     const userEmail = currentUser ? currentUser.email : 'Carregando...';
 
@@ -59,7 +61,7 @@ function MainLayout() {
                     <NavLink to="/frota" className="nav-link"><Users size={20} /><span>Minha Frota</span></NavLink>
                     <NavLink to="/lojas" className="nav-link"><Building size={20} /><span>Gestão de Lojas</span></NavLink>
                     <NavLink to="/historico" className="nav-link"><Archive size={20} /><span>Histórico</span></NavLink>
-                    <NavLink to="/planos" className="nav-link"><CreditCard size={20} /><span>Meu Plano</span></NavLink> {/* <-- NOVO LINK ADICIONADO */}
+                    <NavLink to="/planos" className="nav-link"><CreditCard size={20} /><span>Meu Plano</span></NavLink>
                 </nav>
                 <div className="sidebar-footer">
                     <div className="user-info">
@@ -72,6 +74,9 @@ function MainLayout() {
             </aside>
             
             <main className="content">
+                {/* O banner é inserido aqui, recebendo os dados do contexto */}
+                <TrialBanner status={empresaData?.status} trialEndDate={empresaData?.trialEndDate} />
+
                 <header className="content-header">
                     <h2 className="page-title">{getPageTitle(location.pathname)}</h2>
                 </header>
